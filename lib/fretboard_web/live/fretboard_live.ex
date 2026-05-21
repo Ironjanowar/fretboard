@@ -394,12 +394,11 @@ defmodule FretboardWeb.FretboardLive do
             <h2 class="text-white text-xl font-bold mb-4">Tuning</h2>
 
             <%!-- Preset Dropdown --%>
-            <div class="mb-4">
+            <form phx-change="select_preset" class="mb-4">
               <label class="text-gray-400 text-sm block mb-1">Preset</label>
               <select
                 id="preset-select"
                 class="preset-select w-full bg-gray-800 text-white border border-gray-600 rounded px-3 py-2"
-                phx-change="select_preset"
                 name="preset"
               >
                 <%= for name <- Music.tuning_preset_names() do %>
@@ -407,19 +406,18 @@ defmodule FretboardWeb.FretboardLive do
                 <% end %>
                 <option value="Custom" selected={@modal_preset == "Custom"}>Custom</option>
               </select>
-            </div>
+            </form>
 
             <%!-- Individual String Dropdowns (String 6 to String 1, top to bottom) --%>
             <div class="space-y-2 mb-6">
               <%= for string_num <- 6..1//-1 do %>
                 <% string_idx = string_num - 1 %>
-                <div class="flex items-center gap-3">
+                <form phx-change="change_string" class="flex items-center gap-3">
                   <label class="text-gray-400 text-sm w-16">String {string_num}</label>
+                  <input type="hidden" name="string" value={string_idx} />
                   <select
                     class="string-select flex-1 bg-gray-800 text-white border border-gray-600 rounded px-3 py-2"
-                    phx-change="change_string"
                     name="note"
-                    phx-value-string={string_idx}
                   >
                     <%= for note <- @chromatic_notes do %>
                       <option value={note} selected={Enum.at(@modal_tuning, string_idx) == note}>
@@ -427,7 +425,7 @@ defmodule FretboardWeb.FretboardLive do
                       </option>
                     <% end %>
                   </select>
-                </div>
+                </form>
               <% end %>
             </div>
 
