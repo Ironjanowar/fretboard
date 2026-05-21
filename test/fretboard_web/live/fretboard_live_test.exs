@@ -239,6 +239,20 @@ defmodule FretboardWeb.FretboardLiveTest do
       assert html =~ "tuning-modal"
     end
 
+    test "selecting a preset updates string dropdowns to show preset notes", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      view |> element("[phx-click=open_tuning_modal]") |> render_click()
+
+      # Select Drop D preset: D A D G B E
+      html = render_click(view, "select_preset", %{"preset" => "Drop D"})
+
+      # String 6 (index 0) should show D as selected, not E
+      # Find the select for string 0 and verify D is selected
+      assert html =~ ~r/id="string-select-0[^"]*"[^>]*>.*?<option[^>]*value="D"[^>]*selected/s
+      # String 5 (index 1) should still show A
+      assert html =~ ~r/id="string-select-1[^"]*"[^>]*>.*?<option[^>]*value="A"[^>]*selected/s
+    end
+
     test "applying tuning updates the fretboard and closes modal", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/")
       view |> element("[phx-click=open_tuning_modal]") |> render_click()
