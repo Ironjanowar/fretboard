@@ -3,6 +3,47 @@ defmodule FretboardWeb.FretboardLiveTest do
 
   import Phoenix.LiveViewTest
 
+  describe "string ordering" do
+    test "tuning labels render high E at top and low E at bottom", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/")
+
+      # Extract tuning labels with y-coordinates, then sort by y to get top-to-bottom order
+      labels =
+        Regex.scan(
+          ~r/class="tuning-label"[^>]*y="(\d+)"[^>]*>\s*([A-G]#?)\s*</s,
+          html
+        )
+        |> Enum.map(fn [_, y, note] -> {String.to_integer(y), note} end)
+        |> Enum.sort_by(&elem(&1, 0))
+
+      notes = Enum.map(labels, &elem(&1, 1))
+
+      # Standard tuning reversed for display: high E, B, G, D, A, low E
+      assert List.first(notes) == "E", "First (topmost) label should be high E"
+      assert List.last(notes) == "E", "Last (bottommost) label should be low E"
+      assert notes == ["E", "B", "G", "D", "A", "E"]
+    end
+
+    test "thickest string (low E) renders at the bottom with greatest stroke-width", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/")
+
+      # Extract string lines with their y positions and stroke-widths
+      strings =
+        Regex.scan(
+          ~r/class="string-line"[^>]*y1="(\d+)"[^>]*stroke-width="([\d.]+)"/,
+          html
+        )
+        |> Enum.map(fn [_, y, w] -> {String.to_integer(y), String.to_float(w)} end)
+        |> Enum.sort_by(&elem(&1, 0))
+
+      {_y_positions, widths} = Enum.unzip(strings)
+
+      # The last (bottom) string should have the thickest stroke (low E)
+      assert List.last(widths) > List.first(widths),
+             "Bottom string should be thicker than top string"
+    end
+  end
+
   describe "mount" do
     test "renders the fretboard page successfully", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/")

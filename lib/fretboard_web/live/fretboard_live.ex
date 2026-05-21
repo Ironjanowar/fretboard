@@ -218,8 +218,9 @@ defmodule FretboardWeb.FretboardLive do
             <% end %>
           <% end %>
 
-          <%!-- Strings --%>
+          <%!-- Strings (reversed: high E at top, low E at bottom) --%>
           <%= for s <- 0..(@svg.string_count - 1) do %>
+            <% _string_idx = @svg.string_count - 1 - s %>
             <line
               class="string-line"
               x1={@svg.left_margin}
@@ -227,23 +228,24 @@ defmodule FretboardWeb.FretboardLive do
               x2={@svg.left_margin + (@svg.fret_count + 1) * @svg.fret_width}
               y2={@svg.top_margin + s * @svg.string_spacing}
               stroke="#E0E0E0"
-              stroke-width={1.5 + (5 - s) * 0.3}
+              stroke-width={1.5 + s * 0.3}
             />
           <% end %>
 
-          <%!-- Tuning labels (clickable) --%>
-          <%= for {note, s} <- Enum.with_index(@tuning) do %>
+          <%!-- Tuning labels (clickable, reversed: high E at top, low E at bottom) --%>
+          <%= for {note, string_idx} <- Enum.with_index(@tuning) do %>
+            <% visual_row = @svg.string_count - 1 - string_idx %>
             <text
               class="tuning-label"
               x={@svg.left_margin - 15}
-              y={@svg.top_margin + s * @svg.string_spacing + 5}
+              y={@svg.top_margin + visual_row * @svg.string_spacing + 5}
               fill="#FAFAFA"
               font-size="14"
               font-weight="bold"
               text-anchor="end"
               style="cursor: pointer;"
               phx-click="cycle_tuning"
-              phx-value-string={s}
+              phx-value-string={string_idx}
             >
               {note}
             </text>
@@ -262,32 +264,35 @@ defmodule FretboardWeb.FretboardLive do
             </text>
           <% end %>
 
-          <%!-- Note circles (only when chords are active) --%>
+          <%!-- Note circles (only when chords are active, reversed string order) --%>
           <%= if @active_chords != [] do %>
-            <%= for {string_data, s} <- Enum.with_index(@fretboard) do %>
+            <%= for {string_data, string_idx} <- Enum.with_index(@fretboard) do %>
+              <% visual_row = @svg.string_count - 1 - string_idx %>
               <%= for pos <- string_data do %>
                 <%= if pos.chords != [] do %>
-                  <circle
-                    class="note-circle"
-                    cx={note_cx(pos.fret, @svg)}
-                    cy={@svg.top_margin + s * @svg.string_spacing}
-                    r="8"
-                    fill={note_fill(pos.chords, @active_chords, @chord_colors)}
-                  >
+                  <g style="cursor: pointer;">
                     <%= if length(pos.chords) > 1 do %>
                       <title>{Enum.join(pos.chords, ", ")}</title>
                     <% end %>
-                  </circle>
-                  <text
-                    x={note_cx(pos.fret, @svg)}
-                    y={@svg.top_margin + s * @svg.string_spacing + 4}
-                    fill="#1a1a1a"
-                    font-size="9"
-                    font-weight="bold"
-                    text-anchor="middle"
-                  >
+                    <circle
+                      class="note-circle"
+                      cx={note_cx(pos.fret, @svg)}
+                      cy={@svg.top_margin + visual_row * @svg.string_spacing}
+                      r="8"
+                      fill={note_fill(pos.chords, @active_chords, @chord_colors)}
+                    />
+                    <text
+                      x={note_cx(pos.fret, @svg)}
+                      y={@svg.top_margin + visual_row * @svg.string_spacing + 4}
+                      fill="#1a1a1a"
+                      font-size="9"
+                      font-weight="bold"
+                      text-anchor="middle"
+                      style="pointer-events: none;">
+                    
                     {pos.note}
                   </text>
+                  </g>
                 <% end %>
               <% end %>
             <% end %>

@@ -9,7 +9,7 @@ The grid of strings × frets that represents the guitar neck. Each position on t
 _Avoid_: Neck, mástil (in code)
 
 **String**:
-One of the six horizontal wires on the fretboard. Each string has a tuning note that determines the pitch of all its fret positions.
+One of the six horizontal wires on the fretboard, numbered 1–6 from thinnest (highest pitch) to thickest (lowest pitch). In the data model, string index 0 is the 6th string (low E) and index 5 is the 1st string (high E). In the horizontal fretboard view, string 1 (high E) is rendered at the top and string 6 (low E) at the bottom, matching the guitarist's perspective looking down at the instrument. Each string has a tuning note that determines the pitch of all its fret positions.
 _Avoid_: Wire, cuerda (in code)
 
 **Fret**:
