@@ -243,14 +243,20 @@ defmodule FretboardWeb.FretboardLiveTest do
       {:ok, view, _html} = live(conn, "/")
       view |> element("[phx-click=open_tuning_modal]") |> render_click()
 
-      # Select Drop D preset: D A D G B E
+      # Select Drop D preset: D A D G B E (index 0=D, 1=A, 2=D, 3=G, 4=B, 5=E)
       html = render_click(view, "select_preset", %{"preset" => "Drop D"})
 
-      # String 6 (index 0) should show D as selected, not E
-      # Find the select for string 0 and verify D is selected
-      assert html =~ ~r/id="string-select-0[^"]*"[^>]*>.*?<option[^>]*value="D"[^>]*selected/s
-      # String 5 (index 1) should still show A
-      assert html =~ ~r/id="string-select-1[^"]*"[^>]*>.*?<option[^>]*value="A"[^>]*selected/s
+      # Extract all String N (index I) = Note mappings from the modal
+      string_notes =
+        Regex.scan(
+          ~r/String (\d).*?<select[^>]*id="string-select-(\d)"[^>]*>.*?<option[^>]*value="([^"]*)"[^>]*selected/s,
+          html
+        )
+        |> Enum.map(fn [_, string_num, _idx, note] -> {String.to_integer(string_num), note} end)
+        |> Enum.sort_by(&elem(&1, 0))
+
+      # Drop D: String 1=E, 2=B, 3=G, 4=D, 5=A, 6=D
+      assert string_notes == [{1, "E"}, {2, "B"}, {3, "G"}, {4, "D"}, {5, "A"}, {6, "D"}]
     end
 
     test "applying tuning updates the fretboard and closes modal", %{conn: conn} do

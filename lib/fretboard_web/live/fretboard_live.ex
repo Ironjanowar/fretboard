@@ -409,11 +409,19 @@ defmodule FretboardWeb.FretboardLive do
             </form>
 
             <%!-- Individual String Dropdowns (String 6 to String 1, top to bottom) --%>
-            <div class="space-y-2 mb-6" id={"string-dropdowns-#{Enum.join(@modal_tuning, "")}"} phx-update="replace">
+            <div
+              class="space-y-2 mb-6"
+              id={"string-dropdowns-#{Enum.join(@modal_tuning, "")}"}
+              phx-update="replace"
+            >
               <%= for string_num <- 6..1//-1 do %>
-                <% string_idx = string_num - 1 %>
+                <% string_idx = 6 - string_num %>
                 <% current_note = Enum.at(@modal_tuning, string_idx) %>
-                <form phx-change="change_string" class="flex items-center gap-3" id={"string-form-#{string_idx}"}>
+                <form
+                  phx-change="change_string"
+                  class="flex items-center gap-3"
+                  id={"string-form-#{string_idx}"}
+                >
                   <label class="text-gray-400 text-sm w-16">String {string_num}</label>
                   <input type="hidden" name="string" value={string_idx} />
                   <select
