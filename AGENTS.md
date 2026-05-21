@@ -80,6 +80,8 @@ mix test test/fretboard_web/   # Run web tests only
 mix test path/to/test.exs:42   # Run specific test at line
 mix format                     # Auto-format
 mix format --check-formatted   # Format check (CI mode)
+mix credo --strict             # Lint with strict mode
+mix precommit                  # Full check: compile + format + test
 
 # Running
 mix phx.server                 # Start dev server
@@ -171,7 +173,7 @@ Run `mix format --check-formatted` before every commit.
 ### ✅ Always
 - Write tests before implementing (TDD)
 - Use sub-agents for implementation (test → implement → review)
-- Run `mix test` and `mix format` before pushing
+- Run `mix test`, `mix format`, and `mix credo --strict` before pushing
 - Document public APIs with `@doc`
 - Keep domain logic in `Fretboard.Music`, web logic in `FretboardWeb`
 - Call only the `Fretboard.Music` facade from the web layer
