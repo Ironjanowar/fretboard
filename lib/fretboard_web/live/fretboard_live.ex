@@ -397,7 +397,7 @@ defmodule FretboardWeb.FretboardLive do
             <form phx-change="select_preset" class="mb-4">
               <label class="text-gray-400 text-sm block mb-1">Preset</label>
               <select
-                id="preset-select"
+                id={"preset-select-#{@modal_preset}"}
                 class="preset-select w-full bg-gray-800 text-white border border-gray-600 rounded px-3 py-2"
                 name="preset"
               >
@@ -412,15 +412,17 @@ defmodule FretboardWeb.FretboardLive do
             <div class="space-y-2 mb-6">
               <%= for string_num <- 6..1//-1 do %>
                 <% string_idx = string_num - 1 %>
+                <% current_note = Enum.at(@modal_tuning, string_idx) %>
                 <form phx-change="change_string" class="flex items-center gap-3">
                   <label class="text-gray-400 text-sm w-16">String {string_num}</label>
                   <input type="hidden" name="string" value={string_idx} />
                   <select
+                    id={"string-select-#{string_idx}-#{current_note}"}
                     class="string-select flex-1 bg-gray-800 text-white border border-gray-600 rounded px-3 py-2"
                     name="note"
                   >
                     <%= for note <- @chromatic_notes do %>
-                      <option value={note} selected={Enum.at(@modal_tuning, string_idx) == note}>
+                      <option value={note} selected={note == current_note}>
                         {note}
                       </option>
                     <% end %>
