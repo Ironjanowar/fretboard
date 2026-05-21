@@ -1,0 +1,9 @@
+#!/bin/sh
+# Pre-commit hook: runs compile, format, credo, and tests
+# Install: cp hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+
+set -e
+
+echo "🔍 Running pre-commit checks..."
+mix precommit
+echo "✅ All checks passed!"
