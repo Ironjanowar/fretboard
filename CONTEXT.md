@@ -37,8 +37,12 @@ The base note of a chord. The first note in the chord formula. Example: in "A mi
 _Avoid_: Tonic (reserved for scales), base
 
 **Quality**:
-The type of a chord that determines its interval formula. Examples: major [0,4,7], minor [0,3,7].
+The type of a chord that determines its interval formula. Triads: major [0,4,7], minor [0,3,7], dim [0,3,6], aug [0,4,8], sus2 [0,2,7], sus4 [0,5,7]. Sevenths: 7 [0,4,7,10], maj7 [0,4,7,11], min7 [0,3,7,10], dim7 [0,3,6,9], m7b5 [0,3,6,10].
 _Avoid_: Type, kind, mode
+
+**Tuning Preset**:
+A named, predefined tuning configuration (e.g., Standard, Drop D, DADGAD). Selecting a preset sets all six string notes at once. The user can then edit individual strings for a custom variation.
+_Avoid_: Tuning template, tuning profile
 
 **Chord Formula**:
 A list of semitone intervals from the root that defines which notes belong to a chord quality. Example: major = [0, 4, 7] means root, major third, perfect fifth.

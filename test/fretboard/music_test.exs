@@ -10,8 +10,28 @@ defmodule Fretboard.MusicTest do
   end
 
   describe "available_qualities/0" do
-    test "delegates to Chord" do
-      assert Music.available_qualities() == [:major, :minor]
+    test "delegates to Chord and returns all 11 qualities" do
+      qualities = Music.available_qualities()
+      assert length(qualities) == 11
+      assert :major in qualities
+      assert :"7" in qualities
+    end
+  end
+
+  describe "grouped_qualities/0" do
+    test "returns triads and sevenths groups" do
+      groups = Music.grouped_qualities()
+      assert [{"Triads", triads}, {"Sevenths", sevenths}] = groups
+      assert :major in triads
+      assert :"7" in sevenths
+    end
+  end
+
+  describe "chord_label/2" do
+    test "formats root and quality into short label" do
+      assert Music.chord_label("C", :major) == "Cmaj"
+      assert Music.chord_label("A", :minor) == "Amin"
+      assert Music.chord_label("G", :"7") == "G7"
     end
   end
 
@@ -52,16 +72,14 @@ defmodule Fretboard.MusicTest do
     test "highlights notes belonging to active chords" do
       active = [%{root: "C", quality: :major}]
       data = Music.fretboard_data(Music.standard_tuning(), active)
-      # String 0 (E), fret 0 = E → E is in C major
       first_string = Enum.at(data, 0)
       fret_0 = Enum.at(first_string, 0)
-      assert "C major" in fret_0.chords
+      assert "Cmaj" in fret_0.chords
     end
 
     test "notes not in any chord have empty chords list" do
       active = [%{root: "C", quality: :major}]
       data = Music.fretboard_data(Music.standard_tuning(), active)
-      # String 0 (E), fret 1 = F → F is NOT in C major
       first_string = Enum.at(data, 0)
       fret_1 = Enum.at(first_string, 1)
       assert fret_1.chords == []
@@ -74,11 +92,28 @@ defmodule Fretboard.MusicTest do
       ]
 
       data = Music.fretboard_data(Music.standard_tuning(), active)
-      # String 0 (E), fret 0 = E → E is in both C major and A minor
       first_string = Enum.at(data, 0)
       fret_0 = Enum.at(first_string, 0)
-      assert "C major" in fret_0.chords
-      assert "A minor" in fret_0.chords
+      assert "Cmaj" in fret_0.chords
+      assert "Amin" in fret_0.chords
+    end
+
+    test "works with seventh chords" do
+      active = [%{root: "C", quality: :"7"}]
+      data = Music.fretboard_data(Music.standard_tuning(), active)
+      first_string = Enum.at(data, 0)
+      fret_0 = Enum.at(first_string, 0)
+      # E is in C7 (C, E, G, A#)
+      assert "C7" in fret_0.chords
+    end
+
+    test "works with diminished chords" do
+      active = [%{root: "A", quality: :dim}]
+      data = Music.fretboard_data(Music.standard_tuning(), active)
+      # String 3 (G), fret 1 = G# → not in Adim (A, C, D#)
+      string_3 = Enum.at(data, 3)
+      fret_1 = Enum.at(string_3, 1)
+      assert fret_1.chords == []
     end
   end
 end

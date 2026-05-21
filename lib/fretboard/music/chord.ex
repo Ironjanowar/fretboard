@@ -8,7 +8,35 @@ defmodule Fretboard.Music.Chord do
 
   alias Fretboard.Music.Note
 
-  @formulas %{major: [0, 4, 7], minor: [0, 3, 7]}
+  @formulas %{
+    # Triads
+    major: [0, 4, 7],
+    minor: [0, 3, 7],
+    dim: [0, 3, 6],
+    aug: [0, 4, 8],
+    sus2: [0, 2, 7],
+    sus4: [0, 5, 7],
+    # Sevenths
+    "7": [0, 4, 7, 10],
+    maj7: [0, 4, 7, 11],
+    min7: [0, 3, 7, 10],
+    dim7: [0, 3, 6, 9],
+    m7b5: [0, 3, 6, 10]
+  }
+
+  @labels %{
+    major: "maj",
+    minor: "min",
+    dim: "dim",
+    aug: "aug",
+    sus2: "sus2",
+    sus4: "sus4",
+    "7": "7",
+    maj7: "maj7",
+    min7: "min7",
+    dim7: "dim7",
+    m7b5: "m7b5"
+  }
 
   @doc """
   Returns the list of available chord qualities.
@@ -29,5 +57,38 @@ defmodule Fretboard.Music.Chord do
   def notes(root, quality) do
     formula(quality)
     |> Enum.map(&Note.note_at(root, &1))
+  end
+
+  @doc """
+  Returns the short display label for a chord quality.
+  """
+  @spec label(atom()) :: String.t()
+  def label(quality), do: Map.fetch!(@labels, quality)
+
+  @doc """
+  Returns a formatted chord label combining root and quality.
+
+  ## Examples
+
+      iex> Fretboard.Music.Chord.chord_label("C", :major)
+      "Cmaj"
+
+      iex> Fretboard.Music.Chord.chord_label("G", :"7")
+      "G7"
+  """
+  @spec chord_label(String.t(), atom()) :: String.t()
+  def chord_label(root, quality), do: "#{root}#{label(quality)}"
+
+  @doc """
+  Returns chord qualities organized in groups for UI display.
+
+  Returns a list of `{group_name, qualities}` tuples.
+  """
+  @spec grouped_qualities() :: [{String.t(), [atom()]}]
+  def grouped_qualities do
+    [
+      {"Triads", [:major, :minor, :dim, :aug, :sus2, :sus4]},
+      {"Sevenths", [:"7", :maj7, :min7, :dim7, :m7b5]}
+    ]
   end
 end

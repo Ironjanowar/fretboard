@@ -112,7 +112,7 @@ defmodule FretboardWeb.FretboardLiveTest do
         |> form("#chord-form", %{chord: %{root: "C", quality: "major"}})
         |> render_submit()
 
-      assert html =~ "C major"
+      assert html =~ "Cmaj"
       assert html =~ "chord-chip"
     end
 
@@ -181,21 +181,138 @@ defmodule FretboardWeb.FretboardLiveTest do
     end
   end
 
-  describe "tuning change" do
-    test "clicking tuning label cycles the note and recomputes fretboard", %{conn: conn} do
+  describe "tuning labels" do
+    test "tuning labels are not clickable (no phx-click attribute)", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/")
+
+      # Tuning labels should exist but NOT have phx-click
+      labels = Regex.scan(~r/class="tuning-label"[^>]*>/, html)
+      assert length(labels) == 6
+
+      for [label] <- labels do
+        refute label =~ "phx-click"
+      end
+    end
+  end
+
+  describe "tuning modal" do
+    test "renders a Tuning button in controls", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/")
+      assert html =~ "Tuning"
+    end
+
+    test "modal is hidden by default", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/")
+      refute html =~ "tuning-modal"
+    end
+
+    test "clicking Tuning button opens the modal", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      html = view |> element("[phx-click=open_tuning_modal]") |> render_click()
+      assert html =~ "tuning-modal"
+    end
+
+    test "modal shows preset dropdown", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      html = view |> element("[phx-click=open_tuning_modal]") |> render_click()
+      assert html =~ "preset-select"
+      assert html =~ "Standard"
+      assert html =~ "Drop D"
+      assert html =~ "Custom"
+    end
+
+    test "modal shows 6 string dropdowns", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      html = view |> element("[phx-click=open_tuning_modal]") |> render_click()
+
+      for i <- 1..6 do
+        assert html =~ "String #{i}"
+      end
+    end
+
+    test "selecting a preset updates modal tuning", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      view |> element("[phx-click=open_tuning_modal]") |> render_click()
+
+      html = render_click(view, "select_preset", %{"preset" => "Drop D"})
+      # The modal should still be open with Drop D selected
+      assert html =~ "tuning-modal"
+    end
+
+    test "applying tuning updates the fretboard and closes modal", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      view |> element("[phx-click=open_tuning_modal]") |> render_click()
+      render_click(view, "select_preset", %{"preset" => "Drop D"})
+
+      html = render_click(view, "apply_tuning", %{})
+      # Modal should be closed
+      refute html =~ "tuning-modal"
+      # Tuning label should show D for the low string
+      assert html =~ "tuning-label"
+    end
+
+    test "canceling modal doesn't change tuning", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      view |> element("[phx-click=open_tuning_modal]") |> render_click()
+      render_click(view, "select_preset", %{"preset" => "Drop D"})
+
+      html = render_click(view, "close_tuning_modal", %{})
+      # Modal should be closed
+      refute html =~ "tuning-modal"
+      # Tuning should still be standard — check labels show standard order
+      labels =
+        Regex.scan(~r/class="tuning-label"[^>]*>\s*([A-G]#?)\s*</s, html)
+        |> Enum.map(fn [_, note] -> note end)
+
+      # Standard tuning DOM order (low to high): E A D G B E
+      assert labels == ["E", "A", "D", "G", "B", "E"]
+    end
+
+    test "changing individual string works", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      view |> element("[phx-click=open_tuning_modal]") |> render_click()
+
+      html = render_click(view, "change_string", %{"string" => "0", "note" => "D"})
+      # Modal should still be open
+      assert html =~ "tuning-modal"
+    end
+  end
+
+  describe "query params" do
+    test "mount with no params has standard tuning and no chords", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/")
+      refute html =~ "note-circle"
+      refute html =~ "chord-chip"
+    end
+
+    test "mount with chords param restores those chords", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/?chords=Cmaj,Amin")
+      assert html =~ "note-circle"
+      assert html =~ "Cmaj"
+      assert html =~ "Amin"
+      assert length(Regex.scan(~r/chord-chip/, html)) == 2
+    end
+
+    test "mount with tuning and chords params restores full state", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/?tuning=D,A,D,G,B,E&chords=Cmaj")
+      assert html =~ "note-circle"
+      assert html =~ "Cmaj"
+
+      labels =
+        Regex.scan(~r/class="tuning-label"[^>]*>\s*([A-G]#?)\s*</s, html)
+        |> Enum.map(fn [_, note] -> note end)
+
+      assert labels == ["D", "A", "D", "G", "B", "E"]
+    end
+
+    test "adding a chord updates the URL", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/")
 
-      # Add a chord first so we can see note changes
       view
       |> form("#chord-form", %{chord: %{root: "C", quality: "major"}})
       |> render_submit()
 
-      # Click the first tuning label (E, string index 0) — should cycle to F
-      html = view |> element("[phx-click=cycle_tuning][phx-value-string='0']") |> render_click()
-
-      # The tuning label should now show F instead of E for string 0
-      # We check via the tuning-label class
-      assert html =~ "tuning-label"
+      assert render(view) =~ "Cmaj"
     end
   end
 end

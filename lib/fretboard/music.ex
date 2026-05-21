@@ -6,7 +6,7 @@ defmodule Fretboard.Music do
   It delegates to `Note`, `Chord`, and `Tuning` internally.
   """
 
-  alias Fretboard.Music.{Chord, Note, Tuning}
+  alias Fretboard.Music.{Chord, Note, Tuning, URLCodec}
 
   @doc """
   Returns standard guitar tuning.
@@ -15,10 +15,40 @@ defmodule Fretboard.Music do
   def standard_tuning, do: Tuning.standard()
 
   @doc """
+  Returns a list of named tuning presets.
+  """
+  @spec tuning_presets() :: [{String.t(), [String.t()]}]
+  def tuning_presets, do: Tuning.presets()
+
+  @doc """
+  Returns just the names of all tuning presets.
+  """
+  @spec tuning_preset_names() :: [String.t()]
+  def tuning_preset_names, do: Tuning.preset_names()
+
+  @doc """
   Returns available chord qualities.
   """
   @spec available_qualities() :: [atom()]
   def available_qualities, do: Chord.available_qualities()
+
+  @doc """
+  Returns chord qualities organized in groups for UI display.
+  """
+  @spec grouped_qualities() :: [{String.t(), [atom()]}]
+  def grouped_qualities, do: Chord.grouped_qualities()
+
+  @doc """
+  Returns the short display label for a chord quality.
+  """
+  @spec chord_label(atom()) :: String.t()
+  def chord_label(quality), do: Chord.label(quality)
+
+  @doc """
+  Returns a formatted chord label combining root and quality.
+  """
+  @spec chord_label(String.t(), atom()) :: String.t()
+  def chord_label(root, quality), do: Chord.chord_label(root, quality)
 
   @doc """
   Returns the notes for a chord given root and quality.
@@ -46,9 +76,21 @@ defmodule Fretboard.Music do
     end)
   end
 
+  @doc """
+  Encodes tuning and active chords into URL query params.
+  """
+  @spec encode_params([String.t()], [map()]) :: map()
+  def encode_params(tuning, active_chords), do: URLCodec.encode_params(tuning, active_chords)
+
+  @doc """
+  Decodes URL query params into `{tuning, active_chords}`.
+  """
+  @spec decode_params(map()) :: {[String.t()], [map()]}
+  def decode_params(params), do: URLCodec.decode_params(params)
+
   defp build_chord_lookup(active_chords) do
     Enum.reduce(active_chords, %{}, fn %{root: root, quality: quality}, acc ->
-      label = "#{root} #{quality}"
+      label = Chord.chord_label(root, quality)
       notes = Chord.notes(root, quality)
 
       Enum.reduce(notes, acc, fn note, inner_acc ->
