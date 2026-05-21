@@ -86,6 +86,24 @@ Web app que muestra un **mástil de guitarra en horizontal** donde puedes visual
 - Notas con # se URL-encodean automáticamente (F# → F%23)
 - Al cargar la página con params, se restaura el estado completo
 
+### Keys / Tonalidades (v3)
+- **Concepto:** una tonalidad (Key) es un atajo para cargar los acordes diatónicos de una escala
+- **Fuente de verdad:** siempre son los acordes activos — la Key es solo un input
+- **Escalas v3.0:** mayor y menor natural
+- **Escalas futuras:** menor armónica, menor melódica
+- **Al aplicar una Key:** reemplaza todos los acordes activos
+- **Fórmulas de escala:**
+  - Mayor: [0, 2, 4, 5, 7, 9, 11]
+  - Menor natural: [0, 2, 3, 5, 7, 8, 10]
+- **Acordes diatónicos (mayor):** I=maj, ii=min, iii=min, IV=maj, V=maj, vi=min, vii°=dim
+- **Acordes diatónicos (menor):** i=min, ii°=dim, III=maj, iv=min, v=min, VI=maj, VII=maj
+- **UI:** modal con:
+  - Selector de tónica (12 notas cromáticas)
+  - Selector de tipo de escala (Major, Minor)
+  - Preview de los 7 acordes diatónicos antes de aplicar
+  - Botones Cancel / Apply
+- **Query params:** NO se serializa la Key en la URL, solo los acordes resultantes
+
 ## Evolución futura
 
 - Toggle de octava en las notas
@@ -130,8 +148,16 @@ fretboard/
 - [x] Orden correcto de cuerdas (grave abajo)
 - [x] Credo strict + pre-commit hook
 
-### V2
-- [ ] Acordes complejos (triadas + séptimas)
-- [ ] Selector agrupado con optgroups
-- [ ] Modal de afinación con presets
-- [ ] Query params (URLs compartibles)
+### V2 ✅
+- [x] Acordes complejos (triadas + séptimas)
+- [x] Selector agrupado con optgroups
+- [x] Modal de afinación con presets
+- [x] Query params (URLs compartibles)
+
+### V3 (Keys / Tonalidades)
+- [ ] Lógica de escalas (mayor, menor natural) con fórmulas de intervalos
+- [ ] Cálculo de acordes diatónicos por tonalidad
+- [ ] Modal de Key con selector de tónica + tipo de escala
+- [ ] Preview de acordes diatónicos en el modal antes de aplicar
+- [ ] Apply reemplaza todos los acordes activos
+- [ ] Escalas adicionales: menor armónica, menor melódica

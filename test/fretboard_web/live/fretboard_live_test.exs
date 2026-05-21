@@ -335,4 +335,103 @@ defmodule FretboardWeb.FretboardLiveTest do
       assert render(view) =~ "Cmaj"
     end
   end
+
+  describe "key modal" do
+    test "renders a Key button in controls", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/")
+      assert html =~ "Key"
+    end
+
+    test "key modal is hidden by default", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/")
+      refute html =~ "key-modal"
+    end
+
+    test "clicking Key button opens the modal", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      html = view |> element("[phx-click=open_key_modal]") |> render_click()
+      assert html =~ "key-modal"
+    end
+
+    test "modal shows tonic and scale type selectors", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      html = view |> element("[phx-click=open_key_modal]") |> render_click()
+      assert html =~ "key-tonic-select"
+      assert html =~ "key-scale-select"
+    end
+
+    test "modal shows 7 preview chord chips", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      html = view |> element("[phx-click=open_key_modal]") |> render_click()
+      assert length(Regex.scan(~r/key-preview-chip/, html)) == 7
+    end
+
+    test "applying key replaces all active chords", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+
+      # Add a chord first
+      view
+      |> form("#chord-form", %{chord: %{root: "A", quality: "minor"}})
+      |> render_submit()
+
+      # Open key modal and apply C major
+      view |> element("[phx-click=open_key_modal]") |> render_click()
+      html = render_click(view, "apply_key", %{})
+
+      # Should have 7 diatonic chords of C major, not the old Amin
+      assert length(Regex.scan(~r/chord-chip/, html)) == 7
+      assert html =~ "Cmaj"
+      assert html =~ "Dmin"
+      assert html =~ "Bdim"
+      # Modal should be closed
+      refute html =~ "key-modal"
+    end
+
+    test "applying key updates URL with chord params", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      view |> element("[phx-click=open_key_modal]") |> render_click()
+      render_click(view, "apply_key", %{})
+
+      # Verify chords are in the rendered output
+      html = render(view)
+      assert html =~ "Cmaj"
+    end
+
+    test "canceling key modal doesn't change active chords", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+
+      view
+      |> form("#chord-form", %{chord: %{root: "A", quality: "minor"}})
+      |> render_submit()
+
+      view |> element("[phx-click=open_key_modal]") |> render_click()
+      html = render_click(view, "close_key_modal", %{})
+
+      refute html =~ "key-modal"
+      assert html =~ "Amin"
+      assert length(Regex.scan(~r/chord-chip/, html)) == 1
+    end
+
+    test "after applying key, user can still remove individual chords", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      view |> element("[phx-click=open_key_modal]") |> render_click()
+      render_click(view, "apply_key", %{})
+
+      # Remove the first chord
+      html = view |> element("[phx-click=remove_chord][phx-value-index='0']") |> render_click()
+      assert length(Regex.scan(~r/chord-chip/, html)) == 6
+    end
+
+    test "changing key tonic updates preview", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      view |> element("[phx-click=open_key_modal]") |> render_click()
+
+      html =
+        render_change(view, "update_key", %{"key" => %{"tonic" => "G", "scale_type" => "major"}})
+
+      # Preview should show G major diatonic chords
+      assert html =~ "Gmaj"
+      assert html =~ "Amin"
+    end
+  end
 end

@@ -6,7 +6,7 @@ defmodule Fretboard.Music do
   It delegates to `Note`, `Chord`, and `Tuning` internally.
   """
 
-  alias Fretboard.Music.{Chord, Note, Tuning, URLCodec}
+  alias Fretboard.Music.{Chord, Note, Scale, Tuning, URLCodec}
 
   @doc """
   Returns standard guitar tuning.
@@ -55,6 +55,24 @@ defmodule Fretboard.Music do
   """
   @spec chord_notes(String.t(), atom()) :: [String.t()]
   def chord_notes(root, quality), do: Chord.notes(root, quality)
+
+  @doc """
+  Returns the diatonic chords for a key.
+  """
+  @spec diatonic_chords(String.t(), atom()) :: [%{root: String.t(), quality: atom()}]
+  def diatonic_chords(tonic, scale_type), do: Scale.diatonic_chords(tonic, scale_type)
+
+  @doc """
+  Returns available scale types.
+  """
+  @spec available_scale_types() :: [atom()]
+  def available_scale_types, do: Scale.available_scale_types()
+
+  @doc """
+  Returns the display label for a scale type.
+  """
+  @spec scale_label(atom()) :: String.t()
+  def scale_label(scale_type), do: Scale.scale_label(scale_type)
 
   @doc """
   Builds the full fretboard data structure.

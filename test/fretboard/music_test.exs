@@ -116,4 +116,27 @@ defmodule Fretboard.MusicTest do
       assert fret_1.chords == []
     end
   end
+
+  describe "diatonic_chords/2" do
+    test "delegates to Scale and returns 7 chords" do
+      chords = Music.diatonic_chords("C", :major)
+      assert length(chords) == 7
+      assert Enum.at(chords, 0) == %{root: "C", quality: :major}
+    end
+  end
+
+  describe "available_scale_types/0" do
+    test "delegates to Scale" do
+      types = Music.available_scale_types()
+      assert :major in types
+      assert :minor in types
+    end
+  end
+
+  describe "scale_label/1" do
+    test "delegates to Scale" do
+      assert Music.scale_label(:major) == "Major"
+      assert Music.scale_label(:minor) == "Minor"
+    end
+  end
 end

@@ -44,6 +44,18 @@ _Avoid_: Type, kind, mode
 A named, predefined tuning configuration (e.g., Standard, Drop D, DADGAD). Selecting a preset sets all six string notes at once. The user can then edit individual strings for a custom variation.
 _Avoid_: Tuning template, tuning profile
 
+**Key**:
+A combination of a tonic note and a scale type (e.g., "C major", "A minor"). Selecting a key loads all its diatonic chords as active chords, replacing any existing ones. The key is an input shortcut — the active chords remain the source of truth.
+_Avoid_: Tonality, scale (when referring to the key selection action)
+
+**Diatonic Chord**:
+A chord that belongs to a key. Built on a degree of the scale using only notes from that scale. Example: in C major, the diatonic chords are Cmaj, Dmin, Emin, Fmaj, Gmaj, Amin, Bdim.
+_Avoid_: Scale chord, key chord
+
+**Scale Formula**:
+A list of semitone intervals from the tonic that defines a scale type. Major = [0, 2, 4, 5, 7, 9, 11], natural minor = [0, 2, 3, 5, 7, 8, 10]. Used to compute diatonic chords.
+_Avoid_: Scale pattern, scale intervals (when referring to the stored definition)
+
 **Chord Formula**:
 A list of semitone intervals from the root that defines which notes belong to a chord quality. Example: major = [0, 4, 7] means root, major third, perfect fifth.
 _Avoid_: Pattern, shape, intervals (when referring to the stored definition)

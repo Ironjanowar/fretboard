@@ -53,7 +53,10 @@ defmodule FretboardWeb.FretboardLive do
        chromatic_notes: @chromatic_notes,
        show_tuning_modal: false,
        modal_tuning: tuning,
-       modal_preset: detect_preset(tuning)
+       modal_preset: detect_preset(tuning),
+       show_key_modal: false,
+       key_tonic: "C",
+       key_scale_type: :major
      )}
   end
 
@@ -162,6 +165,36 @@ defmodule FretboardWeb.FretboardLive do
   end
 
   @impl true
+  def handle_event("open_key_modal", _params, socket) do
+    {:noreply, assign(socket, show_key_modal: true, key_tonic: "C", key_scale_type: :major)}
+  end
+
+  @impl true
+  def handle_event("close_key_modal", _params, socket) do
+    {:noreply, assign(socket, show_key_modal: false)}
+  end
+
+  @impl true
+  def handle_event(
+        "update_key",
+        %{"key" => %{"tonic" => tonic, "scale_type" => scale_type}},
+        socket
+      ) do
+    {:noreply,
+     assign(socket, key_tonic: tonic, key_scale_type: String.to_existing_atom(scale_type))}
+  end
+
+  @impl true
+  def handle_event("apply_key", _params, socket) do
+    active_chords = Music.diatonic_chords(socket.assigns.key_tonic, socket.assigns.key_scale_type)
+
+    {:noreply,
+     socket
+     |> assign(show_key_modal: false)
+     |> push_url_patch(socket.assigns.tuning, active_chords)}
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <div class="flex flex-col items-center gap-6 p-6">
@@ -174,6 +207,13 @@ defmodule FretboardWeb.FretboardLive do
             class="bg-gray-700 hover:bg-gray-600 text-white font-bold px-4 py-2 rounded"
           >
             🎸 Tuning
+          </button>
+          <button
+            type="button"
+            phx-click="open_key_modal"
+            class="bg-gray-700 hover:bg-gray-600 text-white font-bold px-4 py-2 rounded"
+          >
+            🎵 Key
           </button>
           <form
             id="chord-form"
@@ -451,6 +491,87 @@ defmodule FretboardWeb.FretboardLive do
               <button
                 type="button"
                 phx-click="apply_tuning"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded"
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <%!-- Key Modal --%>
+      <%= if @show_key_modal do %>
+        <div
+          id="key-modal"
+          class="key-modal fixed inset-0 z-50 flex items-center justify-center"
+        >
+          <div class="absolute inset-0 bg-black bg-opacity-60" phx-click="close_key_modal"></div>
+          <div class="relative bg-gray-900 border border-gray-700 rounded-lg p-6 w-96 max-w-full">
+            <h2 class="text-white text-xl font-bold mb-4">Key</h2>
+
+            <form phx-change="update_key" id="key-form">
+              <div class="flex gap-3 mb-4">
+                <div class="flex-1">
+                  <label class="text-gray-400 text-sm block mb-1">Tonic</label>
+                  <select
+                    id={"key-tonic-select-#{@key_tonic}"}
+                    class="key-tonic-select w-full bg-gray-800 text-white border border-gray-600 rounded px-3 py-2"
+                    name="key[tonic]"
+                  >
+                    <%= for note <- @chromatic_notes do %>
+                      <option value={note} selected={@key_tonic == note}>{note}</option>
+                    <% end %>
+                  </select>
+                </div>
+                <div class="flex-1">
+                  <label class="text-gray-400 text-sm block mb-1">Scale</label>
+                  <select
+                    id={"key-scale-select-#{@key_scale_type}"}
+                    class="key-scale-select w-full bg-gray-800 text-white border border-gray-600 rounded px-3 py-2"
+                    name="key[scale_type]"
+                  >
+                    <%= for st <- Music.available_scale_types() do %>
+                      <option value={st} selected={@key_scale_type == st}>
+                        {Music.scale_label(st)}
+                      </option>
+                    <% end %>
+                  </select>
+                </div>
+              </div>
+            </form>
+
+            <%!-- Preview Diatonic Chords --%>
+            <div class="mb-6">
+              <label class="text-gray-400 text-sm block mb-2">Diatonic Chords</label>
+              <div
+                class="flex flex-wrap gap-2"
+                id={"key-preview-#{@key_tonic}-#{@key_scale_type}"}
+                phx-update="replace"
+              >
+                <%= for {chord, i} <- Enum.with_index(Music.diatonic_chords(@key_tonic, @key_scale_type)) do %>
+                  <span
+                    class="key-preview-chip inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold text-gray-900"
+                    style={"background-color: #{Enum.at(@chord_colors, rem(i, length(@chord_colors)))}"}
+                  >
+                    {Music.chord_label(chord.root, chord.quality)}
+                  </span>
+                <% end %>
+              </div>
+            </div>
+
+            <%!-- Buttons --%>
+            <div class="flex justify-end gap-3">
+              <button
+                type="button"
+                phx-click="close_key_modal"
+                class="px-4 py-2 rounded text-gray-400 hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                phx-click="apply_key"
                 class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded"
               >
                 Apply
