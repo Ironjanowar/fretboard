@@ -17,7 +17,7 @@ defmodule FretboardWeb.Router do
   scope "/", FretboardWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    live "/", FretboardLive
   end
 
   # Other scopes may use custom stacks.
