@@ -43,8 +43,10 @@ if config_env() == :prod do
 
   config :fretboard, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
+  base_path = System.get_env("PHX_BASE_PATH", "/")
+
   config :fretboard, FretboardWeb.Endpoint,
-    url: [host: host, port: url_port, scheme: scheme],
+    url: [host: host, port: url_port, scheme: scheme, path: base_path],
     http: [
       port: port,
       # Bind on all interfaces. Defaults to IPv4 for maximum compatibility
