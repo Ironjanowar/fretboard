@@ -83,16 +83,6 @@ lib/
 
 **Key design rule:** The web layer talks only to `Fretboard.Music` (the facade module). Internal music modules are never called directly from LiveView.
 
-## 🗺️ Roadmap
-
-- [ ] **Keys / Tonalities** — select a key (e.g., C major) to load all its diatonic chords at once
-- [ ] Scale visualization (major, minor, pentatonic, modes)
-- [ ] Interval display (root, 3rd, 5th, 7th...)
-- [ ] Chord voicing diagrams
-- [ ] Note audio playback
-- [ ] Mobile / responsive layout
-- [ ] Extended chords (9th, 11th, 13th)
-
 ## 📄 License
 
 MIT
