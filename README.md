@@ -13,9 +13,15 @@ Built for guitarists who want to **understand** the fretboard, not just memorize
 - **Shareable URLs** — every chord/tuning combination generates a unique URL you can share or bookmark
 - **Overlap detection** — notes shared between chords are highlighted with tooltips showing which chords contain them
 
-## 📸 Screenshot
+## 📸 Screenshots
 
-<!-- TODO: Add screenshot -->
+**Multi-chord visualization** — E minor and A major side by side, overlapping notes in grey:
+
+![Multi-chord visualization](screenshots/multi-chord.jpg)
+
+**Key mode** — All diatonic chords of E minor loaded at once with distinct colors:
+
+![Key diatonic chords](screenshots/key-diatonic.jpg)
 
 ## 🎯 Who Is This For?
 
