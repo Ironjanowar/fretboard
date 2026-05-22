@@ -190,6 +190,79 @@ defmodule Fretboard.Music.ChordTest do
     end
   end
 
+  describe "interval_labels/1" do
+    test "returns major interval labels" do
+      assert Chord.interval_labels(:major) == ["Root", "Major 3rd", "Perfect 5th"]
+    end
+
+    test "returns minor interval labels" do
+      assert Chord.interval_labels(:minor) == ["Root", "Minor 3rd", "Perfect 5th"]
+    end
+
+    test "returns dim interval labels" do
+      assert Chord.interval_labels(:dim) == ["Root", "Minor 3rd", "Tritone"]
+    end
+
+    test "returns aug interval labels" do
+      assert Chord.interval_labels(:aug) == ["Root", "Major 3rd", "Augmented 5th"]
+    end
+
+    test "returns sus2 interval labels" do
+      assert Chord.interval_labels(:sus2) == ["Root", "Major 2nd", "Perfect 5th"]
+    end
+
+    test "returns sus4 interval labels" do
+      assert Chord.interval_labels(:sus4) == ["Root", "Perfect 4th", "Perfect 5th"]
+    end
+
+    test "returns dominant 7 interval labels" do
+      assert Chord.interval_labels(:"7") == ["Root", "Major 3rd", "Perfect 5th", "Minor 7th"]
+    end
+
+    test "returns maj7 interval labels" do
+      assert Chord.interval_labels(:maj7) == ["Root", "Major 3rd", "Perfect 5th", "Major 7th"]
+    end
+
+    test "returns min7 interval labels" do
+      assert Chord.interval_labels(:min7) == ["Root", "Minor 3rd", "Perfect 5th", "Minor 7th"]
+    end
+
+    test "returns dim7 interval labels" do
+      assert Chord.interval_labels(:dim7) == ["Root", "Minor 3rd", "Tritone", "Major 6th"]
+    end
+
+    test "returns m7b5 interval labels" do
+      assert Chord.interval_labels(:m7b5) == ["Root", "Minor 3rd", "Tritone", "Minor 7th"]
+    end
+  end
+
+  describe "notes_with_intervals/2" do
+    test "returns C major notes with intervals" do
+      assert Chord.notes_with_intervals("C", :major) == [
+               {"C", "Root"},
+               {"E", "Major 3rd"},
+               {"G", "Perfect 5th"}
+             ]
+    end
+
+    test "returns A minor notes with intervals" do
+      assert Chord.notes_with_intervals("A", :minor) == [
+               {"A", "Root"},
+               {"C", "Minor 3rd"},
+               {"E", "Perfect 5th"}
+             ]
+    end
+
+    test "returns G dominant 7 notes with intervals" do
+      assert Chord.notes_with_intervals("G", :"7") == [
+               {"G", "Root"},
+               {"B", "Major 3rd"},
+               {"D", "Perfect 5th"},
+               {"F", "Minor 7th"}
+             ]
+    end
+  end
+
   describe "grouped_qualities/0" do
     test "returns triads and sevenths groups" do
       groups = Chord.grouped_qualities()

@@ -24,6 +24,21 @@ defmodule Fretboard.Music.Chord do
     m7b5: [0, 3, 6, 10]
   }
 
+  @interval_names %{
+    0 => "Root",
+    1 => "Minor 2nd",
+    2 => "Major 2nd",
+    3 => "Minor 3rd",
+    4 => "Major 3rd",
+    5 => "Perfect 4th",
+    6 => "Tritone",
+    7 => "Perfect 5th",
+    8 => "Augmented 5th",
+    9 => "Major 6th",
+    10 => "Minor 7th",
+    11 => "Major 7th"
+  }
+
   @labels %{
     major: "maj",
     minor: "min",
@@ -78,6 +93,23 @@ defmodule Fretboard.Music.Chord do
   """
   @spec chord_label(String.t(), atom()) :: String.t()
   def chord_label(root, quality), do: "#{root}#{label(quality)}"
+
+  @doc """
+  Returns the interval labels for a chord quality.
+  """
+  @spec interval_labels(atom()) :: [String.t()]
+  def interval_labels(quality) do
+    formula(quality)
+    |> Enum.map(&Map.fetch!(@interval_names, &1))
+  end
+
+  @doc """
+  Returns notes with their interval labels for a chord.
+  """
+  @spec notes_with_intervals(String.t(), atom()) :: [{String.t(), String.t()}]
+  def notes_with_intervals(root, quality) do
+    Enum.zip(notes(root, quality), interval_labels(quality))
+  end
 
   @doc """
   Returns chord qualities organized in groups for UI display.

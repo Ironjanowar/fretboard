@@ -57,6 +57,12 @@ defmodule Fretboard.Music do
   def chord_notes(root, quality), do: Chord.notes(root, quality)
 
   @doc """
+  Returns notes with their interval labels for a chord.
+  """
+  @spec notes_with_intervals(String.t(), atom()) :: [{String.t(), String.t()}]
+  def notes_with_intervals(root, quality), do: Chord.notes_with_intervals(root, quality)
+
+  @doc """
   Returns the diatonic chords for a key.
   """
   @spec diatonic_chords(String.t(), atom()) :: [%{root: String.t(), quality: atom()}]

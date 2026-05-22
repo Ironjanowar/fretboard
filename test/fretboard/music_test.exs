@@ -117,6 +117,16 @@ defmodule Fretboard.MusicTest do
     end
   end
 
+  describe "notes_with_intervals/2" do
+    test "delegates to Chord.notes_with_intervals/2" do
+      assert Music.notes_with_intervals("C", :major) == [
+               {"C", "Root"},
+               {"E", "Major 3rd"},
+               {"G", "Perfect 5th"}
+             ]
+    end
+  end
+
   describe "diatonic_chords/2" do
     test "delegates to Scale and returns 7 chords" do
       chords = Music.diatonic_chords("C", :major)

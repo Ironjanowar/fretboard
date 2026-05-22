@@ -404,22 +404,29 @@ defmodule FretboardWeb.FretboardLive do
       </div>
 
       <%!-- Active chords chips --%>
-      <div class="w-full max-w-7xl flex flex-wrap gap-2">
+      <div class="w-full max-w-7xl flex flex-wrap gap-4">
         <%= for {chord, i} <- Enum.with_index(@active_chords) do %>
-          <span
-            class="chord-chip inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold text-gray-900"
+          <div
+            class="chord-chip rounded-lg text-sm font-semibold text-gray-900 p-3"
             style={"background-color: #{Enum.at(@chord_colors, rem(i, length(@chord_colors)))}"}
           >
-            {Music.chord_label(chord.root, chord.quality)}
-            <button
-              type="button"
-              phx-click="remove_chord"
-              phx-value-index={i}
-              class="ml-1 text-gray-700 hover:text-black font-bold"
-            >
-              ×
-            </button>
-          </span>
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-bold">{Music.chord_label(chord.root, chord.quality)}</span>
+              <button
+                type="button"
+                phx-click="remove_chord"
+                phx-value-index={i}
+                class="ml-2 text-gray-700 hover:text-black font-bold"
+              >
+                ×
+              </button>
+            </div>
+            <div class="text-xs space-y-0.5">
+              <%= for {note, interval} <- Music.notes_with_intervals(chord.root, chord.quality) do %>
+                <div>{note} - {interval}</div>
+              <% end %>
+            </div>
+          </div>
         <% end %>
       </div>
 
