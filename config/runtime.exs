@@ -36,17 +36,26 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret
       """
 
-  host = System.get_env("PHX_HOST") || "example.com"
+  host = System.get_env("PHX_HOST") || "localhost"
+  port = String.to_integer(System.get_env("PORT", "4000"))
+  scheme = System.get_env("PHX_SCHEME", "http")
+  url_port = if scheme == "https", do: 443, else: port
 
   config :fretboard, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
   config :fretboard, FretboardWeb.Endpoint,
-    url: [host: host, port: 443, scheme: "https"],
+    url: [host: host, port: url_port, scheme: scheme],
     http: [
+      port: port,
       # Bind on all interfaces. Defaults to IPv4 for maximum compatibility
       # (e.g. FreeBSD without IPv6). Set FRETBOARD_IP=:: for IPv6.
-      ip: if(System.get_env("FRETBOARD_IP") == "::", do: {0, 0, 0, 0, 0, 0, 0, 0}, else: {0, 0, 0, 0})
+      ip:
+        if(System.get_env("FRETBOARD_IP") == "::",
+          do: {0, 0, 0, 0, 0, 0, 0, 0},
+          else: {0, 0, 0, 0}
+        )
     ],
+    check_origin: false,
     secret_key_base: secret_key_base
 
   # ## SSL Support
