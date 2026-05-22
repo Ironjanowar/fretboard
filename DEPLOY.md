@@ -44,19 +44,193 @@ docker compose up
 docker compose up -d
 ```
 
-## Running Without Docker
+## Running Without Docker (Native Release)
+
+This works on any system with Elixir/Erlang installed (Linux, FreeBSD, macOS).
+
+### 1. Clone and build
 
 ```bash
-# Install dependencies
+git clone https://github.com/Ironjanowar/fretboard.git
+cd fretboard
+
+export MIX_ENV=prod
 mix deps.get --only prod
-MIX_ENV=prod mix assets.deploy
+mix compile
+mix assets.deploy
+mix release
+```
 
-# Build the release
-MIX_ENV=prod mix release
+The release will be at `_build/prod/rel/fretboard/`.
 
-# Run it
-SECRET_KEY_BASE=$(mix phx.gen.secret) PHX_HOST=localhost PORT=4000 \
-  _build/prod/rel/fretboard/bin/server
+### 2. Configure environment variables
+
+Generate a secret key (run once, save the output):
+
+```bash
+mix phx.gen.secret
+```
+
+Set these before running:
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `SECRET_KEY_BASE` | **Yes** | — | 64+ char secret. Generate with `mix phx.gen.secret` |
+| `PHX_HOST` | No | `localhost` | Public hostname (e.g. `fretboard.example.com`) |
+| `PORT` | No | `4000` | HTTP port to listen on |
+| `PHX_SERVER` | **Yes** | — | Set to `true` to start the web server |
+
+### 3. Run the release
+
+```bash
+export SECRET_KEY_BASE="your-generated-secret-here"
+export PHX_HOST="fretboard.example.com"
+export PORT=4000
+export PHX_SERVER=true
+
+# Start in foreground
+_build/prod/rel/fretboard/bin/server
+
+# Or start as daemon (background)
+_build/prod/rel/fretboard/bin/fretboard start
+```
+
+### 4. Manage the running release
+
+```bash
+# Check if running
+_build/prod/rel/fretboard/bin/fretboard pid
+
+# Attach remote IEx console
+_build/prod/rel/fretboard/bin/fretboard remote
+
+# Stop gracefully
+_build/prod/rel/fretboard/bin/fretboard stop
+
+# Restart
+_build/prod/rel/fretboard/bin/fretboard restart
+```
+
+### 5. Update to a new version
+
+```bash
+cd /path/to/fretboard
+git pull
+
+export MIX_ENV=prod
+mix deps.get --only prod
+mix compile
+mix assets.deploy
+mix release
+
+_build/prod/rel/fretboard/bin/fretboard restart
+```
+
+### 6. Run as a system service (optional)
+
+#### FreeBSD rc.d
+
+Create `/usr/local/etc/rc.d/fretboard`:
+
+```sh
+#!/bin/sh
+
+# PROVIDE: fretboard
+# REQUIRE: NETWORKING
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+
+name="fretboard"
+rcvar="fretboard_enable"
+
+load_rc_config $name
+
+: ${fretboard_enable:="NO"}
+: ${fretboard_dir:="/opt/fretboard"}
+: ${fretboard_user:="www"}
+: ${fretboard_secret_key_base:=""}
+: ${fretboard_host:="localhost"}
+: ${fretboard_port:="4000"}
+
+command="${fretboard_dir}/_build/prod/rel/fretboard/bin/fretboard"
+
+start_cmd="fretboard_start"
+stop_cmd="fretboard_stop"
+status_cmd="fretboard_status"
+
+fretboard_start() {
+    echo "Starting ${name}."
+    su -m ${fretboard_user} -c "\
+        SECRET_KEY_BASE='${fretboard_secret_key_base}' \
+        PHX_HOST='${fretboard_host}' \
+        PORT='${fretboard_port}' \
+        PHX_SERVER=true \
+        ${command} start"
+}
+
+fretboard_stop() {
+    echo "Stopping ${name}."
+    su -m ${fretboard_user} -c "${command} stop"
+}
+
+fretboard_status() {
+    su -m ${fretboard_user} -c "${command} pid" \
+        && echo "${name} is running." \
+        || echo "${name} is not running."
+}
+
+run_rc_command "$1"
+```
+
+Then enable in `/etc/rc.conf`:
+
+```
+fretboard_enable="YES"
+fretboard_secret_key_base="your-secret-here"
+fretboard_host="fretboard.example.com"
+fretboard_port="4000"
+```
+
+Make executable and start:
+
+```bash
+chmod +x /usr/local/etc/rc.d/fretboard
+service fretboard start
+```
+
+#### Linux systemd
+
+Create `/etc/systemd/system/fretboard.service`:
+
+```ini
+[Unit]
+Description=Fretboard Visualizer
+After=network.target
+
+[Service]
+Type=exec
+User=fretboard
+Group=fretboard
+WorkingDirectory=/opt/fretboard
+Environment=SECRET_KEY_BASE=your-secret-here
+Environment=PHX_HOST=fretboard.example.com
+Environment=PORT=4000
+Environment=PHX_SERVER=true
+ExecStart=/opt/fretboard/_build/prod/rel/fretboard/bin/server
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Then enable and start:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable fretboard
+sudo systemctl start fretboard
 ```
 
 ## SSL / HTTPS (Reverse Proxy)
@@ -94,9 +268,17 @@ fretboard.example.com {
 }
 ```
 
-After setting up a reverse proxy, uncomment the `force_ssl` block in `config/prod.exs` and rebuild.
+After setting up a reverse proxy with SSL:
+
+1. Uncomment the `force_ssl` block in `config/prod.exs`
+2. Set `PHX_HOST` to your domain
+3. Rebuild the release or Docker image
+
+> **Important:** The `Upgrade` and `Connection` proxy headers are required for LiveView WebSockets to work.
 
 ## Useful Commands
+
+### Docker
 
 ```bash
 # View logs
@@ -113,6 +295,20 @@ docker compose exec fretboard /bin/bash
 
 # Remote IEx console
 docker compose exec fretboard /app/bin/fretboard remote
+```
+
+### Native release
+
+```bash
+# Check status
+_build/prod/rel/fretboard/bin/fretboard pid
+
+# Remote IEx console
+_build/prod/rel/fretboard/bin/fretboard remote
+
+# Stop / restart
+_build/prod/rel/fretboard/bin/fretboard stop
+_build/prod/rel/fretboard/bin/fretboard restart
 ```
 
 ## Troubleshooting
