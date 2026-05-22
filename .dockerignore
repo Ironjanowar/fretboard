@@ -1,0 +1,11 @@
+.git
+_build
+deps
+.elixir_ls
+node_modules
+test
+.github
+screenshots
+*.md
+!README.md
+!DEPLOY.md
