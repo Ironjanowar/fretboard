@@ -8,7 +8,8 @@
 import Config
 
 config :fretboard,
-  generators: [timestamp_type: :utc_datetime]
+  generators: [timestamp_type: :utc_datetime],
+  base_path: System.get_env("PHX_BASE_PATH", "/")
 
 # Configure the endpoint
 config :fretboard, FretboardWeb.Endpoint,
