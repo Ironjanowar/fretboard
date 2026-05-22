@@ -69,6 +69,12 @@ defmodule Fretboard.Music do
   def available_scale_types, do: Scale.available_scale_types()
 
   @doc """
+  Returns scale types organized in groups for UI display.
+  """
+  @spec grouped_scale_types() :: [{String.t(), [atom()]}]
+  def grouped_scale_types, do: Scale.grouped_scale_types()
+
+  @doc """
   Returns the display label for a scale type.
   """
   @spec scale_label(atom()) :: String.t()

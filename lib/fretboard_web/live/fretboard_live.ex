@@ -531,10 +531,14 @@ defmodule FretboardWeb.FretboardLive do
                     class="key-scale-select w-full bg-gray-800 text-white border border-gray-600 rounded px-3 py-2"
                     name="key[scale_type]"
                   >
-                    <%= for st <- Music.available_scale_types() do %>
-                      <option value={st} selected={@key_scale_type == st}>
-                        {Music.scale_label(st)}
-                      </option>
+                    <%= for {group, scale_types} <- Music.grouped_scale_types() do %>
+                      <optgroup label={group}>
+                        <%= for st <- scale_types do %>
+                          <option value={st} selected={@key_scale_type == st}>
+                            {Music.scale_label(st)}
+                          </option>
+                        <% end %>
+                      </optgroup>
                     <% end %>
                   </select>
                 </div>
