@@ -197,21 +197,21 @@ defmodule FretboardWeb.FretboardLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="flex flex-col items-center gap-6 p-6">
+    <div class="main-container">
       <%!-- Controls: Tuning + Chord Selector --%>
-      <div class="w-full max-w-7xl">
-        <div class="flex items-center gap-3">
+      <div class="controls-wrapper">
+        <div class="controls-row">
           <button
             type="button"
             phx-click="open_tuning_modal"
-            class="bg-gray-700 hover:bg-gray-600 text-white font-bold px-4 py-2 rounded"
+            class="btn btn-secondary"
           >
             🎸 Tuning
           </button>
           <button
             type="button"
             phx-click="open_key_modal"
-            class="bg-gray-700 hover:bg-gray-600 text-white font-bold px-4 py-2 rounded"
+            class="btn btn-secondary"
           >
             🎵 Key
           </button>
@@ -219,12 +219,12 @@ defmodule FretboardWeb.FretboardLive do
             id="chord-form"
             phx-change="validate_chord"
             phx-submit="add_chord"
-            class="flex items-center gap-3"
+            class="form-inline"
           >
             <select
               id="root-select"
               name="chord[root]"
-              class="bg-gray-800 text-white border border-gray-600 rounded px-3 py-2"
+              class="form-select"
             >
               <%= for note <- @chromatic_notes do %>
                 <option value={note} selected={@chord_form["root"] == note}>{note}</option>
@@ -233,7 +233,7 @@ defmodule FretboardWeb.FretboardLive do
             <select
               id="quality-select"
               name="chord[quality]"
-              class="bg-gray-800 text-white border border-gray-600 rounded px-3 py-2"
+              class="form-select"
             >
               <%= for {group, qualities} <- Music.grouped_qualities() do %>
                 <optgroup label={group}>
@@ -247,7 +247,7 @@ defmodule FretboardWeb.FretboardLive do
             </select>
             <button
               type="submit"
-              class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded"
+              class="btn btn-primary"
             >
               Add
             </button>
@@ -256,10 +256,10 @@ defmodule FretboardWeb.FretboardLive do
       </div>
 
       <%!-- SVG Fretboard --%>
-      <div class="w-full max-w-7xl overflow-x-auto" id="fretboard">
+      <div class="fretboard-wrapper" id="fretboard">
         <svg
           viewBox={"0 0 #{@svg.width} #{@svg.height}"}
-          class="w-full"
+          class="fretboard-svg"
           style="min-width: 900px;"
         >
           <%!-- Fretboard background --%>
@@ -404,24 +404,24 @@ defmodule FretboardWeb.FretboardLive do
       </div>
 
       <%!-- Active chords chips --%>
-      <div class="w-full max-w-7xl flex flex-wrap gap-4">
+      <div class="chords-wrapper">
         <%= for {chord, i} <- Enum.with_index(@active_chords) do %>
           <div
-            class="chord-chip rounded-lg text-sm font-semibold text-gray-900 p-3"
+            class="chord-chip"
             style={"background-color: #{Enum.at(@chord_colors, rem(i, length(@chord_colors)))}"}
           >
-            <div class="flex items-center justify-between mb-2">
-              <span class="font-bold">{Music.chord_label(chord.root, chord.quality)}</span>
+            <div class="chord-chip-header">
+              <span class="chord-chip-title">{Music.chord_label(chord.root, chord.quality)}</span>
               <button
                 type="button"
                 phx-click="remove_chord"
                 phx-value-index={i}
-                class="ml-2 text-gray-700 hover:text-black font-bold"
+                class="chord-chip-remove"
               >
                 ×
               </button>
             </div>
-            <div class="text-xs space-y-0.5">
+            <div class="chord-chip-intervals">
               <%= for {note, interval} <- Music.notes_with_intervals(chord.root, chord.quality) do %>
                 <div>{note} - {interval}</div>
               <% end %>
@@ -434,18 +434,18 @@ defmodule FretboardWeb.FretboardLive do
       <%= if @show_tuning_modal do %>
         <div
           id="tuning-modal"
-          class="tuning-modal fixed inset-0 z-50 flex items-center justify-center"
+          class="modal-overlay"
         >
-          <div class="absolute inset-0 bg-black bg-opacity-60" phx-click="close_tuning_modal"></div>
-          <div class="relative bg-gray-900 border border-gray-700 rounded-lg p-6 w-96 max-w-full">
-            <h2 class="text-white text-xl font-bold mb-4">Tuning</h2>
+          <div class="modal-backdrop" phx-click="close_tuning_modal"></div>
+          <div class="modal-content">
+            <h2 class="modal-title">Tuning</h2>
 
             <%!-- Preset Dropdown --%>
-            <form phx-change="select_preset" class="mb-4">
-              <label class="text-gray-400 text-sm block mb-1">Preset</label>
+            <form phx-change="select_preset" class="form-group">
+              <label class="form-label">Preset</label>
               <select
                 id={"preset-select-#{@modal_preset}"}
-                class="preset-select w-full bg-gray-800 text-white border border-gray-600 rounded px-3 py-2"
+                class="form-select-full"
                 name="preset"
               >
                 <%= for name <- Music.tuning_preset_names() do %>
@@ -457,7 +457,7 @@ defmodule FretboardWeb.FretboardLive do
 
             <%!-- Individual String Dropdowns (String 6 to String 1, top to bottom) --%>
             <div
-              class="space-y-2 mb-6"
+              class="form-group-spaced"
               id={"string-dropdowns-#{Enum.join(@modal_tuning, "")}"}
               phx-update="replace"
             >
@@ -466,14 +466,14 @@ defmodule FretboardWeb.FretboardLive do
                 <% current_note = Enum.at(@modal_tuning, string_idx) %>
                 <form
                   phx-change="change_string"
-                  class="flex items-center gap-3"
+                  class="string-row"
                   id={"string-form-#{string_idx}"}
                 >
-                  <label class="text-gray-400 text-sm w-16">String {string_num}</label>
+                  <label class="string-label">String {string_num}</label>
                   <input type="hidden" name="string" value={string_idx} />
                   <select
                     id={"string-select-#{string_idx}"}
-                    class="string-select flex-1 bg-gray-800 text-white border border-gray-600 rounded px-3 py-2"
+                    class="form-select-full string-select"
                     name="note"
                   >
                     <%= for note <- @chromatic_notes do %>
@@ -487,18 +487,18 @@ defmodule FretboardWeb.FretboardLive do
             </div>
 
             <%!-- Buttons --%>
-            <div class="flex justify-end gap-3">
+            <div class="modal-buttons">
               <button
                 type="button"
                 phx-click="close_tuning_modal"
-                class="px-4 py-2 rounded text-gray-400 hover:text-white"
+                class="btn btn-ghost"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 phx-click="apply_tuning"
-                class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded"
+                class="btn btn-primary"
               >
                 Apply
               </button>
@@ -511,19 +511,19 @@ defmodule FretboardWeb.FretboardLive do
       <%= if @show_key_modal do %>
         <div
           id="key-modal"
-          class="key-modal fixed inset-0 z-50 flex items-center justify-center"
+          class="modal-overlay"
         >
-          <div class="absolute inset-0 bg-black bg-opacity-60" phx-click="close_key_modal"></div>
-          <div class="relative bg-gray-900 border border-gray-700 rounded-lg p-6 w-96 max-w-full">
-            <h2 class="text-white text-xl font-bold mb-4">Key</h2>
+          <div class="modal-backdrop" phx-click="close_key_modal"></div>
+          <div class="modal-content">
+            <h2 class="modal-title">Key</h2>
 
             <form phx-change="update_key" id="key-form">
-              <div class="flex gap-3 mb-4">
-                <div class="flex-1">
-                  <label class="text-gray-400 text-sm block mb-1">Tonic</label>
+              <div class="form-row">
+                <div class="form-col">
+                  <label class="form-label">Tonic</label>
                   <select
                     id={"key-tonic-select-#{@key_tonic}"}
-                    class="key-tonic-select w-full bg-gray-800 text-white border border-gray-600 rounded px-3 py-2"
+                    class="form-select-full"
                     name="key[tonic]"
                   >
                     <%= for note <- @chromatic_notes do %>
@@ -531,11 +531,11 @@ defmodule FretboardWeb.FretboardLive do
                     <% end %>
                   </select>
                 </div>
-                <div class="flex-1">
-                  <label class="text-gray-400 text-sm block mb-1">Scale</label>
+                <div class="form-col">
+                  <label class="form-label">Scale</label>
                   <select
                     id={"key-scale-select-#{@key_scale_type}"}
-                    class="key-scale-select w-full bg-gray-800 text-white border border-gray-600 rounded px-3 py-2"
+                    class="form-select-full"
                     name="key[scale_type]"
                   >
                     <%= for {group, scale_types} <- Music.grouped_scale_types() do %>
@@ -553,16 +553,16 @@ defmodule FretboardWeb.FretboardLive do
             </form>
 
             <%!-- Preview Diatonic Chords --%>
-            <div class="mb-6">
-              <label class="text-gray-400 text-sm block mb-2">Diatonic Chords</label>
+            <div class="form-group-spaced">
+              <label class="section-label">Diatonic Chords</label>
               <div
-                class="flex flex-wrap gap-2"
+                class="key-preview-wrapper"
                 id={"key-preview-#{@key_tonic}-#{@key_scale_type}"}
                 phx-update="replace"
               >
                 <%= for {chord, i} <- Enum.with_index(Music.diatonic_chords(@key_tonic, @key_scale_type)) do %>
                   <span
-                    class="key-preview-chip inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold text-gray-900"
+                    class="key-preview-chip"
                     style={"background-color: #{Enum.at(@chord_colors, rem(i, length(@chord_colors)))}"}
                   >
                     {Music.chord_label(chord.root, chord.quality)}
@@ -572,18 +572,18 @@ defmodule FretboardWeb.FretboardLive do
             </div>
 
             <%!-- Buttons --%>
-            <div class="flex justify-end gap-3">
+            <div class="modal-buttons">
               <button
                 type="button"
                 phx-click="close_key_modal"
-                class="px-4 py-2 rounded text-gray-400 hover:text-white"
+                class="btn btn-ghost"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 phx-click="apply_key"
-                class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded"
+                class="btn btn-primary"
               >
                 Apply
               </button>

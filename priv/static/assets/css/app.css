@@ -1,0 +1,330 @@
+/* ===== Reset & Base ===== */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: #111827;
+  color: #ffffff;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* ===== Layout ===== */
+.main-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem;
+}
+
+.controls-wrapper {
+  width: 100%;
+  max-width: 80rem;
+}
+
+.controls-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.fretboard-wrapper {
+  width: 100%;
+  max-width: 80rem;
+  overflow-x: auto;
+}
+
+.fretboard-svg {
+  width: 100%;
+}
+
+.chords-wrapper {
+  width: 100%;
+  max-width: 80rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+/* ===== Buttons ===== */
+.btn {
+  font-weight: 700;
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  transition: background-color 0.15s;
+}
+
+.btn-primary {
+  background-color: #2563eb;
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background-color: #1d4ed8;
+}
+
+.btn-secondary {
+  background-color: #374151;
+  color: #ffffff;
+}
+
+.btn-secondary:hover {
+  background-color: #4b5563;
+}
+
+.btn-ghost {
+  background: none;
+  color: #9ca3af;
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+}
+
+.btn-ghost:hover {
+  color: #ffffff;
+}
+
+/* ===== Forms ===== */
+.form-select {
+  background-color: #1f2937;
+  color: #ffffff;
+  border: 1px solid #4b5563;
+  border-radius: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  appearance: auto;
+}
+
+.form-select-full {
+  width: 100%;
+  background-color: #1f2937;
+  color: #ffffff;
+  border: 1px solid #4b5563;
+  border-radius: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  appearance: auto;
+}
+
+.form-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* ===== Chord Chips ===== */
+.chord-chip {
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #111827;
+  padding: 0.75rem;
+}
+
+.chord-chip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.chord-chip-title {
+  font-weight: 700;
+}
+
+.chord-chip-remove {
+  margin-left: 0.5rem;
+  color: #374151;
+  font-weight: 700;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.chord-chip-remove:hover {
+  color: #000000;
+}
+
+.chord-chip-intervals {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+/* ===== Key Preview Chips ===== */
+.key-preview-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.key-preview-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* ===== Modals ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+.modal-content {
+  position: relative;
+  background-color: #111827;
+  border: 1px solid #374151;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  width: 24rem;
+  max-width: 100%;
+}
+
+.modal-title {
+  color: #ffffff;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+/* ===== Modal Form Elements ===== */
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group-spaced {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.form-label {
+  color: #9ca3af;
+  font-size: 0.875rem;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.form-row {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.form-col {
+  flex: 1;
+}
+
+.string-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.string-label {
+  color: #9ca3af;
+  font-size: 0.875rem;
+  width: 4rem;
+}
+
+.string-select {
+  flex: 1;
+}
+
+/* ===== LiveView internals ===== */
+[data-phx-session], [data-phx-teleported-src] {
+  display: contents;
+}
+
+/* ===== Flash Messages ===== */
+.flash-group {
+  position: fixed;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 100;
+}
+
+.flash {
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.flash-info {
+  background-color: #065f46;
+  color: #d1fae5;
+  border: 1px solid #047857;
+}
+
+.flash-error {
+  background-color: #7f1d1d;
+  color: #fecaca;
+  border: 1px solid #991b1b;
+}
+
+.flash-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.5;
+  font-size: 1.25rem;
+  line-height: 1;
+  margin-left: auto;
+}
+
+.flash-close:hover {
+  opacity: 1;
+}
+
+/* ===== Section Label ===== */
+.section-label {
+  color: #9ca3af;
+  font-size: 0.875rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+/* ===== Utility ===== */
+.hidden {
+  display: none !important;
+}

@@ -143,7 +143,7 @@ defmodule FretboardWeb.FretboardLiveTest do
         |> render_submit()
 
       # Should only have one chip
-      assert length(Regex.scan(~r/chord-chip/, html)) == 1
+      assert length(Regex.scan(~r/chord-chip"/, html)) == 1
     end
   end
 
@@ -310,7 +310,7 @@ defmodule FretboardWeb.FretboardLiveTest do
       assert html =~ "note-circle"
       assert html =~ "Cmaj"
       assert html =~ "Amin"
-      assert length(Regex.scan(~r/chord-chip/, html)) == 2
+      assert length(Regex.scan(~r/chord-chip"/, html)) == 2
     end
 
     test "mount with tuning and chords params restores full state", %{conn: conn} do
@@ -379,7 +379,7 @@ defmodule FretboardWeb.FretboardLiveTest do
       html = render_click(view, "apply_key", %{})
 
       # Should have 7 diatonic chords of C major, not the old Amin
-      assert length(Regex.scan(~r/chord-chip/, html)) == 7
+      assert length(Regex.scan(~r/chord-chip"/, html)) == 7
       assert html =~ "Cmaj"
       assert html =~ "Dmin"
       assert html =~ "Bdim"
@@ -409,7 +409,7 @@ defmodule FretboardWeb.FretboardLiveTest do
 
       refute html =~ "key-modal"
       assert html =~ "Amin"
-      assert length(Regex.scan(~r/chord-chip/, html)) == 1
+      assert length(Regex.scan(~r/chord-chip"/, html)) == 1
     end
 
     test "after applying key, user can still remove individual chords", %{conn: conn} do
@@ -419,7 +419,7 @@ defmodule FretboardWeb.FretboardLiveTest do
 
       # Remove the first chord
       html = view |> element("[phx-click=remove_chord][phx-value-index='0']") |> render_click()
-      assert length(Regex.scan(~r/chord-chip/, html)) == 6
+      assert length(Regex.scan(~r/chord-chip"/, html)) == 6
     end
 
     test "changing key tonic updates preview", %{conn: conn} do

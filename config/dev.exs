@@ -16,8 +16,7 @@ config :fretboard, FretboardWeb.Endpoint,
   debug_errors: true,
   secret_key_base: "xNASJPAArkXsZEx9npcT23R+bw5pmHo04rC5hgFe3ZSAxlik/9aykco2400tEyzF",
   watchers: [
-    esbuild: {Esbuild, :install_and_run, [:fretboard, ~w(--sourcemap=inline --watch)]},
-    tailwind: {Tailwind, :install_and_run, [:fretboard, ~w(--watch)]}
+    esbuild: {Esbuild, :install_and_run, [:fretboard, ~w(--sourcemap=inline --watch)]}
   ]
 
 # ## SSL Support
