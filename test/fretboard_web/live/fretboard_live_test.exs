@@ -5,7 +5,7 @@ defmodule FretboardWeb.FretboardLiveTest do
 
   describe "string ordering" do
     test "tuning labels render high E at top and low E at bottom", %{conn: conn} do
-      {:ok, _view, html} = live(conn, "/fretboard")
+      {:ok, _view, html} = live(conn, "/")
 
       # Extract tuning labels with y-coordinates, then sort by y to get top-to-bottom order
       labels =
@@ -25,7 +25,7 @@ defmodule FretboardWeb.FretboardLiveTest do
     end
 
     test "thickest string (low E) renders at the bottom with greatest stroke-width", %{conn: conn} do
-      {:ok, _view, html} = live(conn, "/fretboard")
+      {:ok, _view, html} = live(conn, "/")
 
       # Extract string lines with their y positions and stroke-widths
       strings =
@@ -46,23 +46,23 @@ defmodule FretboardWeb.FretboardLiveTest do
 
   describe "mount" do
     test "renders the fretboard page successfully", %{conn: conn} do
-      {:ok, _view, html} = live(conn, "/fretboard")
+      {:ok, _view, html} = live(conn, "/")
       assert html =~ "fretboard"
     end
 
     test "renders 6 strings as horizontal lines", %{conn: conn} do
-      {:ok, _view, html} = live(conn, "/fretboard")
+      {:ok, _view, html} = live(conn, "/")
       # 6 string lines in SVG
       assert length(Regex.scan(~r/class="string-line"/, html)) == 6
     end
 
     test "renders 25 fret lines (0-24)", %{conn: conn} do
-      {:ok, _view, html} = live(conn, "/fretboard")
+      {:ok, _view, html} = live(conn, "/")
       assert length(Regex.scan(~r/class="fret-line"/, html)) == 25
     end
 
     test "shows standard tuning labels", %{conn: conn} do
-      {:ok, _view, html} = live(conn, "/fretboard")
+      {:ok, _view, html} = live(conn, "/")
 
       for note <- ["E", "A", "D", "G", "B", "E"] do
         assert html =~ note
@@ -70,22 +70,22 @@ defmodule FretboardWeb.FretboardLiveTest do
     end
 
     test "does not show note circles when no chords are active", %{conn: conn} do
-      {:ok, _view, html} = live(conn, "/fretboard")
+      {:ok, _view, html} = live(conn, "/")
       refute html =~ "note-circle"
     end
 
     test "renders the nut with distinct styling", %{conn: conn} do
-      {:ok, _view, html} = live(conn, "/fretboard")
+      {:ok, _view, html} = live(conn, "/")
       assert html =~ "nut-line"
     end
 
     test "renders fret markers at correct positions", %{conn: conn} do
-      {:ok, _view, html} = live(conn, "/fretboard")
+      {:ok, _view, html} = live(conn, "/")
       assert html =~ "fret-marker"
     end
 
     test "renders chord selector with root and quality dropdowns", %{conn: conn} do
-      {:ok, _view, html} = live(conn, "/fretboard")
+      {:ok, _view, html} = live(conn, "/")
       assert html =~ "root-select"
       assert html =~ "quality-select"
       assert html =~ "Add"
@@ -94,7 +94,7 @@ defmodule FretboardWeb.FretboardLiveTest do
 
   describe "add_chord" do
     test "adding a chord shows note circles on the fretboard", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/fretboard")
+      {:ok, view, _html} = live(conn, "/")
 
       html =
         view
@@ -105,7 +105,7 @@ defmodule FretboardWeb.FretboardLiveTest do
     end
 
     test "adding a chord shows it as a chip below the fretboard", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/fretboard")
+      {:ok, view, _html} = live(conn, "/")
 
       html =
         view
@@ -117,7 +117,7 @@ defmodule FretboardWeb.FretboardLiveTest do
     end
 
     test "chord notes appear with correct note names", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/fretboard")
+      {:ok, view, _html} = live(conn, "/")
 
       html =
         view
@@ -131,7 +131,7 @@ defmodule FretboardWeb.FretboardLiveTest do
     end
 
     test "adding duplicate chord is prevented", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/fretboard")
+      {:ok, view, _html} = live(conn, "/")
 
       view
       |> form("#chord-form", %{chord: %{root: "C", quality: "major"}})
@@ -149,7 +149,7 @@ defmodule FretboardWeb.FretboardLiveTest do
 
   describe "remove_chord" do
     test "removing a chord removes it from chips and fretboard", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/fretboard")
+      {:ok, view, _html} = live(conn, "/")
 
       view
       |> form("#chord-form", %{chord: %{root: "C", quality: "major"}})
@@ -164,7 +164,7 @@ defmodule FretboardWeb.FretboardLiveTest do
 
   describe "overlap notes" do
     test "overlapping notes show neutral color", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/fretboard")
+      {:ok, view, _html} = live(conn, "/")
 
       # C major = C, E, G; A minor = A, C, E — overlap on C and E
       view
@@ -183,7 +183,7 @@ defmodule FretboardWeb.FretboardLiveTest do
 
   describe "tuning labels" do
     test "tuning labels are not clickable (no phx-click attribute)", %{conn: conn} do
-      {:ok, _view, html} = live(conn, "/fretboard")
+      {:ok, _view, html} = live(conn, "/")
 
       # Tuning labels should exist but NOT have phx-click
       labels = Regex.scan(~r/class="tuning-label"[^>]*>/, html)
@@ -197,23 +197,23 @@ defmodule FretboardWeb.FretboardLiveTest do
 
   describe "tuning modal" do
     test "renders a Tuning button in controls", %{conn: conn} do
-      {:ok, _view, html} = live(conn, "/fretboard")
+      {:ok, _view, html} = live(conn, "/")
       assert html =~ "Tuning"
     end
 
     test "modal is hidden by default", %{conn: conn} do
-      {:ok, _view, html} = live(conn, "/fretboard")
+      {:ok, _view, html} = live(conn, "/")
       refute html =~ "tuning-modal"
     end
 
     test "clicking Tuning button opens the modal", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/fretboard")
+      {:ok, view, _html} = live(conn, "/")
       html = view |> element("[phx-click=open_tuning_modal]") |> render_click()
       assert html =~ "tuning-modal"
     end
 
     test "modal shows preset dropdown", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/fretboard")
+      {:ok, view, _html} = live(conn, "/")
       html = view |> element("[phx-click=open_tuning_modal]") |> render_click()
       assert html =~ "preset-select"
       assert html =~ "Standard"
@@ -222,7 +222,7 @@ defmodule FretboardWeb.FretboardLiveTest do
     end
 
     test "modal shows 6 string dropdowns", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/fretboard")
+      {:ok, view, _html} = live(conn, "/")
       html = view |> element("[phx-click=open_tuning_modal]") |> render_click()
 
       for i <- 1..6 do
@@ -231,7 +231,7 @@ defmodule FretboardWeb.FretboardLiveTest do
     end
 
     test "selecting a preset updates modal tuning", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/fretboard")
+      {:ok, view, _html} = live(conn, "/")
       view |> element("[phx-click=open_tuning_modal]") |> render_click()
 
       html = render_click(view, "select_preset", %{"preset" => "Drop D"})
@@ -240,7 +240,7 @@ defmodule FretboardWeb.FretboardLiveTest do
     end
 
     test "selecting a preset updates string dropdowns to show preset notes", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/fretboard")
+      {:ok, view, _html} = live(conn, "/")
       view |> element("[phx-click=open_tuning_modal]") |> render_click()
 
       # Select Drop D preset: D A D G B E (index 0=D, 1=A, 2=D, 3=G, 4=B, 5=E)
@@ -260,7 +260,7 @@ defmodule FretboardWeb.FretboardLiveTest do
     end
 
     test "applying tuning updates the fretboard and closes modal", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/fretboard")
+      {:ok, view, _html} = live(conn, "/")
       view |> element("[phx-click=open_tuning_modal]") |> render_click()
       render_click(view, "select_preset", %{"preset" => "Drop D"})
 
@@ -272,7 +272,7 @@ defmodule FretboardWeb.FretboardLiveTest do
     end
 
     test "canceling modal doesn't change tuning", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/fretboard")
+      {:ok, view, _html} = live(conn, "/")
       view |> element("[phx-click=open_tuning_modal]") |> render_click()
       render_click(view, "select_preset", %{"preset" => "Drop D"})
 
@@ -289,7 +289,7 @@ defmodule FretboardWeb.FretboardLiveTest do
     end
 
     test "changing individual string works", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/fretboard")
+      {:ok, view, _html} = live(conn, "/")
       view |> element("[phx-click=open_tuning_modal]") |> render_click()
 
       html = render_click(view, "change_string", %{"string" => "0", "note" => "D"})
@@ -300,13 +300,13 @@ defmodule FretboardWeb.FretboardLiveTest do
 
   describe "query params" do
     test "mount with no params has standard tuning and no chords", %{conn: conn} do
-      {:ok, _view, html} = live(conn, "/fretboard")
+      {:ok, _view, html} = live(conn, "/")
       refute html =~ "note-circle"
       refute html =~ "chord-chip"
     end
 
     test "mount with chords param restores those chords", %{conn: conn} do
-      {:ok, _view, html} = live(conn, "/fretboard?chords=Cmaj,Amin")
+      {:ok, _view, html} = live(conn, "/?chords=Cmaj,Amin")
       assert html =~ "note-circle"
       assert html =~ "Cmaj"
       assert html =~ "Amin"
@@ -314,7 +314,7 @@ defmodule FretboardWeb.FretboardLiveTest do
     end
 
     test "mount with tuning and chords params restores full state", %{conn: conn} do
-      {:ok, _view, html} = live(conn, "/fretboard?tuning=D,A,D,G,B,E&chords=Cmaj")
+      {:ok, _view, html} = live(conn, "/?tuning=D,A,D,G,B,E&chords=Cmaj")
       assert html =~ "note-circle"
       assert html =~ "Cmaj"
 
@@ -326,7 +326,7 @@ defmodule FretboardWeb.FretboardLiveTest do
     end
 
     test "adding a chord updates the URL", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/fretboard")
+      {:ok, view, _html} = live(conn, "/")
 
       view
       |> form("#chord-form", %{chord: %{root: "C", quality: "major"}})
@@ -338,36 +338,36 @@ defmodule FretboardWeb.FretboardLiveTest do
 
   describe "key modal" do
     test "renders a Key button in controls", %{conn: conn} do
-      {:ok, _view, html} = live(conn, "/fretboard")
+      {:ok, _view, html} = live(conn, "/")
       assert html =~ "Key"
     end
 
     test "key modal is hidden by default", %{conn: conn} do
-      {:ok, _view, html} = live(conn, "/fretboard")
+      {:ok, _view, html} = live(conn, "/")
       refute html =~ "key-modal"
     end
 
     test "clicking Key button opens the modal", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/fretboard")
+      {:ok, view, _html} = live(conn, "/")
       html = view |> element("[phx-click=open_key_modal]") |> render_click()
       assert html =~ "key-modal"
     end
 
     test "modal shows tonic and scale type selectors", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/fretboard")
+      {:ok, view, _html} = live(conn, "/")
       html = view |> element("[phx-click=open_key_modal]") |> render_click()
       assert html =~ "key-tonic-select"
       assert html =~ "key-scale-select"
     end
 
     test "modal shows 7 preview chord chips", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/fretboard")
+      {:ok, view, _html} = live(conn, "/")
       html = view |> element("[phx-click=open_key_modal]") |> render_click()
       assert length(Regex.scan(~r/key-preview-chip/, html)) == 7
     end
 
     test "applying key replaces all active chords", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/fretboard")
+      {:ok, view, _html} = live(conn, "/")
 
       # Add a chord first
       view
@@ -388,7 +388,7 @@ defmodule FretboardWeb.FretboardLiveTest do
     end
 
     test "applying key updates URL with chord params", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/fretboard")
+      {:ok, view, _html} = live(conn, "/")
       view |> element("[phx-click=open_key_modal]") |> render_click()
       render_click(view, "apply_key", %{})
 
@@ -398,7 +398,7 @@ defmodule FretboardWeb.FretboardLiveTest do
     end
 
     test "canceling key modal doesn't change active chords", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/fretboard")
+      {:ok, view, _html} = live(conn, "/")
 
       view
       |> form("#chord-form", %{chord: %{root: "A", quality: "minor"}})
@@ -413,7 +413,7 @@ defmodule FretboardWeb.FretboardLiveTest do
     end
 
     test "after applying key, user can still remove individual chords", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/fretboard")
+      {:ok, view, _html} = live(conn, "/")
       view |> element("[phx-click=open_key_modal]") |> render_click()
       render_click(view, "apply_key", %{})
 
@@ -423,7 +423,7 @@ defmodule FretboardWeb.FretboardLiveTest do
     end
 
     test "changing key tonic updates preview", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/fretboard")
+      {:ok, view, _html} = live(conn, "/")
       view |> element("[phx-click=open_key_modal]") |> render_click()
 
       html =

@@ -637,7 +637,7 @@ defmodule FretboardWeb.FretboardLive do
   defp push_url_patch(socket, tuning, active_chords) do
     params = Music.encode_params(tuning, active_chords)
     query = URI.encode_query(params)
-    path = if query == "", do: "/fretboard", else: "/fretboard?#{query}"
+    path = if query == "", do: "/", else: "/?#{query}"
     push_patch(socket, to: path)
   end
 end
