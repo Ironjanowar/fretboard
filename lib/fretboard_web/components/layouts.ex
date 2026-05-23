@@ -5,9 +5,6 @@ defmodule FretboardWeb.Layouts do
   """
   use FretboardWeb, :html
 
-  @base_path Application.compile_env(:fretboard, :base_path, "/")
-  def base_path, do: @base_path
-
   embed_templates "layouts/*"
 
   @doc """

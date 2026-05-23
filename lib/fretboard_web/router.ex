@@ -14,9 +14,7 @@ defmodule FretboardWeb.Router do
     plug :accepts, ["json"]
   end
 
-  @base_path Application.compile_env(:fretboard, :base_path, "/")
-
-  scope @base_path, FretboardWeb do
+  scope "/", FretboardWeb do
     pipe_through :browser
 
     live "/", FretboardLive
