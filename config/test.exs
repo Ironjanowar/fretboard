@@ -7,12 +7,6 @@ config :fretboard, FretboardWeb.Endpoint,
   secret_key_base: "q+nVwtCK+DUWvXqbFSjdWs0zj/aa7oUVD5grd+xsmbR3pEB9nZD2MvXi2xyWuPLh",
   server: false
 
-# In test we don't send emails
-config :fretboard, Fretboard.Mailer, adapter: Swoosh.Adapters.Test
-
-# Disable swoosh api client as it is only required for production adapters
-config :swoosh, :api_client, false
-
 # Print only warnings and errors during test
 config :logger, level: :warning
 

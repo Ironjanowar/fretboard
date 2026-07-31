@@ -42,22 +42,7 @@ config :fretboard, FretboardWeb.Endpoint,
 # configured to run both http and https servers on
 # different ports.
 
-# Reload browser tabs when matching files change.
-config :fretboard, FretboardWeb.Endpoint,
-  live_reload: [
-    web_console_logger: true,
-    patterns: [
-      # Static assets, except user uploads
-      ~r"priv/static/(?!uploads/).*\.(js|css|png|jpeg|jpg|gif|svg)$"E,
-      # Gettext translations
-      ~r"priv/gettext/.*\.po$"E,
-      # Router, Controllers, LiveViews and LiveComponents
-      ~r"lib/fretboard_web/router\.ex$"E,
-      ~r"lib/fretboard_web/(controllers|live|components)/.*\.(ex|heex)$"E
-    ]
-  ]
-
-# Enable dev routes for dashboard and mailbox
+# Enable dev routes for dashboard
 config :fretboard, dev_routes: true
 
 # Do not include metadata nor timestamps in development logs
@@ -78,5 +63,4 @@ config :phoenix_live_view,
   # Enable helpful, but potentially expensive runtime checks
   enable_expensive_runtime_checks: true
 
-# Disable swoosh api client as it is only required for production adapters.
-config :swoosh, :api_client, false
+

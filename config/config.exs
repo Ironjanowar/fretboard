@@ -21,15 +21,6 @@ config :fretboard, FretboardWeb.Endpoint,
   pubsub_server: Fretboard.PubSub,
   live_view: [signing_salt: "IPM4wKvG"]
 
-# Configure the mailer
-#
-# By default it uses the "Local" adapter which stores the emails
-# locally. You can see the emails in your browser, at "/dev/mailbox".
-#
-# For production it's recommended to configure a different adapter
-# at the `config/runtime.exs`.
-config :fretboard, Fretboard.Mailer, adapter: Swoosh.Adapters.Local
-
 # Configure esbuild (the version is required)
 config :esbuild,
   version: "0.25.4",
