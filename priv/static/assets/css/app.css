@@ -324,6 +324,30 @@ body {
   margin-bottom: 0.5rem;
 }
 
+/* ===== Footer ===== */
+.site-footer {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  margin-top: 2rem;
+  border-top: 1px solid #374151;
+  color: #9ca3af;
+  font-size: 0.75rem;
+}
+
+.site-footer p {
+  margin-bottom: 0.25rem;
+}
+
+.site-footer a {
+  color: #9ca3af;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.site-footer a:hover {
+  color: #ffffff;
+}
+
 /* ===== Utility ===== */
 .hidden {
   display: none !important;
