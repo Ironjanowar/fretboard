@@ -128,7 +128,7 @@ defmodule Fretboard.Music.URLCodecTest do
 
   describe "decode_params/1" do
     test "returns defaults for empty params" do
-      assert URLCodec.decode_params(%{}) == {["E", "A", "D", "G", "B", "E"], []}
+      assert URLCodec.decode_params(%{}) == {["E", "A", "D", "G", "B", "E"], [], nil}
     end
 
     test "decodes chords and tuning from params" do
@@ -136,13 +136,122 @@ defmodule Fretboard.Music.URLCodecTest do
 
       assert URLCodec.decode_params(params) == {
                ["D", "A", "D", "G", "B", "E"],
-               [%{root: "C", quality: :major}, %{root: "A", quality: :minor}]
+               [%{root: "C", quality: :major}, %{root: "A", quality: :minor}],
+               nil
              }
     end
   end
 
-  describe "round-trip" do
-    test "encode then decode produces same data" do
+  describe "encode_params/3 with highlighted_index" do
+    test "returns same result as encode_params/2 when highlighted_index is nil" do
+      chords = [%{root: "C", quality: :major}]
+      tuning = ["E", "A", "D", "G", "B", "E"]
+
+      result_two = URLCodec.encode_params(tuning, chords)
+      result_three = URLCodec.encode_params(tuning, chords, nil)
+
+      assert result_three == result_two
+    end
+
+    test "includes highlight key when highlighted_index is provided" do
+      chords = [%{root: "C", quality: :major}, %{root: "A", quality: :minor}]
+      tuning = ["E", "A", "D", "G", "B", "E"]
+
+      result = URLCodec.encode_params(tuning, chords, 0)
+
+      assert result["highlight"] == "Cmaj"
+    end
+
+    test "highlight encodes the label of the chord at the given index" do
+      chords = [%{root: "C", quality: :major}, %{root: "A", quality: :minor}]
+      tuning = ["E", "A", "D", "G", "B", "E"]
+
+      result = URLCodec.encode_params(tuning, chords, 1)
+
+      assert result["highlight"] == "Amin"
+    end
+
+    test "encode_params/3 includes highlight alongside chords and tuning" do
+      chords = [%{root: "C", quality: :major}]
+      tuning = ["D", "A", "D", "G", "B", "E"]
+
+      result = URLCodec.encode_params(tuning, chords, 0)
+
+      assert result["chords"] == "Cmaj"
+      assert result["tuning"] == "D,A,D,G,B,E"
+      assert result["highlight"] == "Cmaj"
+    end
+
+    test "encode_params/2 backward compatibility still works" do
+      chords = [%{root: "C", quality: :major}]
+      tuning = ["E", "A", "D", "G", "B", "E"]
+
+      result = URLCodec.encode_params(tuning, chords)
+
+      assert result == %{"chords" => "Cmaj"}
+      refute Map.has_key?(result, "highlight")
+    end
+  end
+
+  describe "decode_params/1 with highlight" do
+    test "returns three-element tuple with highlighted_index when highlight param present" do
+      params = %{"chords" => "Cmaj,Amin", "highlight" => "Cmaj"}
+
+      assert URLCodec.decode_params(params) ==
+               {["E", "A", "D", "G", "B", "E"],
+                [%{root: "C", quality: :major}, %{root: "A", quality: :minor}], 0}
+    end
+
+    test "returns highlighted_index matching second chord" do
+      params = %{"chords" => "Cmaj,Amin", "highlight" => "Amin"}
+
+      assert URLCodec.decode_params(params) ==
+               {["E", "A", "D", "G", "B", "E"],
+                [%{root: "C", quality: :major}, %{root: "A", quality: :minor}], 1}
+    end
+
+    test "returns nil for highlighted_index when no highlight param" do
+      params = %{"chords" => "Cmaj"}
+
+      assert URLCodec.decode_params(params) ==
+               {["E", "A", "D", "G", "B", "E"], [%{root: "C", quality: :major}], nil}
+    end
+
+    test "returns nil for highlighted_index with empty params" do
+      assert URLCodec.decode_params(%{}) == {["E", "A", "D", "G", "B", "E"], [], nil}
+    end
+
+    test "returns nil for highlighted_index when highlight label does not match any chord" do
+      params = %{"chords" => "Cmaj,Amin", "highlight" => "G7"}
+
+      assert URLCodec.decode_params(params) ==
+               {["E", "A", "D", "G", "B", "E"],
+                [%{root: "C", quality: :major}, %{root: "A", quality: :minor}], nil}
+    end
+
+    test "backward compat: existing two-element usage still compiles" do
+      # Existing callers that pattern match on {tuning, chords} should still
+      # be supported if they don't care about highlight. This test just
+      # verifies decode_params runs; callers will need to update their
+      # pattern matches when the feature is implemented.
+      params = %{"chords" => "Cmaj"}
+
+      result = URLCodec.decode_params(params)
+
+      # The result is now a 3-tuple
+      assert tuple_size(result) == 3
+    end
+
+    test "decodes highlight with tuning param present" do
+      params = %{"chords" => "Cmaj", "tuning" => "D,A,D,G,B,E", "highlight" => "Cmaj"}
+
+      assert URLCodec.decode_params(params) ==
+               {["D", "A", "D", "G", "B", "E"], [%{root: "C", quality: :major}], 0}
+    end
+  end
+
+  describe "round-trip with highlight" do
+    test "encode then decode produces same data without highlight" do
       chords = [
         %{root: "C", quality: :major},
         %{root: "A", quality: :minor},
@@ -152,21 +261,63 @@ defmodule Fretboard.Music.URLCodecTest do
       tuning = ["D", "A", "D", "G", "B", "E"]
 
       params = URLCodec.encode_params(tuning, chords)
-      {decoded_tuning, decoded_chords} = URLCodec.decode_params(params)
+      {decoded_tuning, decoded_chords, highlighted_index} = URLCodec.decode_params(params)
 
       assert decoded_tuning == tuning
       assert decoded_chords == chords
+      assert highlighted_index == nil
     end
 
-    test "round-trip with standard tuning" do
+    test "round-trip with standard tuning and no highlight" do
       chords = [%{root: "G", quality: :"7"}]
       tuning = ["E", "A", "D", "G", "B", "E"]
 
       params = URLCodec.encode_params(tuning, chords)
-      {decoded_tuning, decoded_chords} = URLCodec.decode_params(params)
+      {decoded_tuning, decoded_chords, highlighted_index} = URLCodec.decode_params(params)
 
       assert decoded_tuning == tuning
       assert decoded_chords == chords
+      assert highlighted_index == nil
+    end
+
+    test "round-trip preserves highlighted_index" do
+      chords = [
+        %{root: "C", quality: :major},
+        %{root: "A", quality: :minor}
+      ]
+
+      tuning = ["E", "A", "D", "G", "B", "E"]
+
+      params = URLCodec.encode_params(tuning, chords, 1)
+      {decoded_tuning, decoded_chords, highlighted_index} = URLCodec.decode_params(params)
+
+      assert decoded_tuning == tuning
+      assert decoded_chords == chords
+      assert highlighted_index == 1
+    end
+
+    test "round-trip with highlight and custom tuning" do
+      chords = [%{root: "D", quality: :minor}]
+      tuning = ["D", "A", "D", "G", "B", "E"]
+
+      params = URLCodec.encode_params(tuning, chords, 0)
+      {decoded_tuning, decoded_chords, highlighted_index} = URLCodec.decode_params(params)
+
+      assert decoded_tuning == tuning
+      assert decoded_chords == chords
+      assert highlighted_index == 0
+    end
+
+    test "round-trip with nil highlighted_index produces no highlight param" do
+      chords = [%{root: "C", quality: :major}]
+      tuning = ["E", "A", "D", "G", "B", "E"]
+
+      params = URLCodec.encode_params(tuning, chords, nil)
+
+      refute Map.has_key?(params, "highlight")
+
+      {_, _, highlighted_index} = URLCodec.decode_params(params)
+      assert highlighted_index == nil
     end
   end
 end

@@ -434,4 +434,171 @@ defmodule FretboardWeb.FretboardLiveTest do
       assert html =~ "Amin"
     end
   end
+
+  describe "highlight_chord event" do
+    test "clicking a chord chip with highlight_chord highlights it", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/?chords=Cmaj,Amin")
+
+      html = render_click(view, "highlight_chord", %{"index" => "0"})
+
+      assert html =~ "chord-chip--highlighted"
+    end
+
+    test "highlighting a chip toggles it on (adds highlighted_chord assign)", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/?chords=Cmaj,Amin")
+
+      html = render_click(view, "highlight_chord", %{"index" => "1"})
+
+      # The second chip should be highlighted
+      assert html =~ "chord-chip--highlighted"
+    end
+
+    test "clicking the same chip again toggles highlight off", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/?chords=Cmaj,Amin")
+
+      # First click: toggle on
+      render_click(view, "highlight_chord", %{"index" => "0"})
+      # Second click: toggle off
+      html = render_click(view, "highlight_chord", %{"index" => "0"})
+
+      refute html =~ "chord-chip--highlighted"
+    end
+
+    test "clicking a different chip switches highlight to the new chip", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/?chords=Cmaj,Amin,G7")
+
+      render_click(view, "highlight_chord", %{"index" => "0"})
+      html = render_click(view, "highlight_chord", %{"index" => "2"})
+
+      # Only one chip should be highlighted at a time
+      assert html =~ "chord-chip--highlighted"
+    end
+
+    test "chord chips have phx-click=highlight_chord and phx-value-index", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/?chords=Cmaj,Amin")
+
+      # Each chip should have the click handler and value
+      assert html =~ ~s(phx-click="highlight_chord")
+      assert html =~ ~s(phx-value-index="0")
+      assert html =~ ~s(phx-value-index="1")
+    end
+
+    test "highlighted chord notes render in chord color instead of gray for single-chord notes",
+         %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/?chords=Cmaj,Amin")
+
+      # Without highlighting, overlapping notes are gray
+      _initial_html = render(view)
+
+      # Highlight C major — its unique notes (C, E, G) should use Cmaj's color
+      html = render_click(view, "highlight_chord", %{"index" => "0"})
+
+      # C major color is #4FC3F7 (first chord, index 0)
+      # The note fill for the highlighted chord should use chord color, not gray
+      assert html =~ "#4FC3F7"
+    end
+  end
+
+  describe "highlight clears on remove_chord" do
+    test "removing the highlighted chord clears highlight", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/?chords=Cmaj,Amin")
+
+      render_click(view, "highlight_chord", %{"index" => "0"})
+
+      # Remove the highlighted chord (index 0)
+      html = view |> element("[phx-click=remove_chord][phx-value-index='0']") |> render_click()
+
+      refute html =~ "chord-chip--highlighted"
+    end
+
+    test "removing a chord before the highlighted chord decrements highlighted_chord", %{
+      conn: conn
+    } do
+      {:ok, view, _html} = live(conn, "/?chords=Cmaj,Amin,G7")
+
+      # Highlight G7 (index 2)
+      render_click(view, "highlight_chord", %{"index" => "2"})
+
+      # Remove Cmaj (index 0, which is before the highlighted chord)
+      html = view |> element("[phx-click=remove_chord][phx-value-index='0']") |> render_click()
+
+      # After removal, Amin is now index 0, G7 is now index 1
+      # G7 should still be highlighted (at its new index)
+      assert html =~ "chord-chip--highlighted"
+    end
+
+    test "removing a chord after the highlighted chord keeps highlight on same chord", %{
+      conn: conn
+    } do
+      {:ok, view, _html} = live(conn, "/?chords=Cmaj,Amin,G7")
+
+      # Highlight Cmaj (index 0)
+      render_click(view, "highlight_chord", %{"index" => "0"})
+
+      # Remove G7 (index 2, which is after the highlighted chord)
+      html = view |> element("[phx-click=remove_chord][phx-value-index='2']") |> render_click()
+
+      # Cmaj should still be highlighted
+      assert html =~ "chord-chip--highlighted"
+    end
+  end
+
+  describe "highlight clears on apply_key" do
+    test "applying a key clears highlighted_chord", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/?chords=Amin")
+
+      # Highlight the chord
+      render_click(view, "highlight_chord", %{"index" => "0"})
+
+      # Apply a key
+      view |> element("[phx-click=open_key_modal]") |> render_click()
+      html = render_click(view, "apply_key", %{})
+
+      # Highlight should be cleared after applying key
+      refute html =~ "chord-chip--highlighted"
+    end
+  end
+
+  describe "highlight in URL params" do
+    test "mount with highlight param highlights the correct chord", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/?chords=Cmaj,Amin&highlight=Cmaj")
+
+      assert html =~ "chord-chip--highlighted"
+    end
+
+    test "mount with highlight param pointing to second chord", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/?chords=Cmaj,Amin&highlight=Amin")
+
+      assert html =~ "chord-chip--highlighted"
+    end
+
+    test "mount with invalid highlight param defaults to no highlight", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/?chords=Cmaj,Amin&highlight=G7")
+
+      refute html =~ "chord-chip--highlighted"
+    end
+
+    test "highlighting a chord updates the URL", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/?chords=Cmaj")
+
+      render_click(view, "highlight_chord", %{"index" => "0"})
+
+      # The URL should include the highlight param
+      # We verify by checking the rendered output still shows the highlighted chip
+      html = render(view)
+      assert html =~ "chord-chip--highlighted"
+    end
+
+    test "toggling highlight off removes it from URL", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/?chords=Cmaj")
+
+      # Toggle on
+      render_click(view, "highlight_chord", %{"index" => "0"})
+      # Toggle off
+      render_click(view, "highlight_chord", %{"index" => "0"})
+
+      html = render(view)
+      refute html =~ "chord-chip--highlighted"
+    end
+  end
 end

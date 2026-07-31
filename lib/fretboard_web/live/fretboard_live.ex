@@ -39,13 +39,14 @@ defmodule FretboardWeb.FretboardLive do
 
   @impl true
   def mount(params, _session, socket) do
-    {tuning, active_chords} = Music.decode_params(params)
+    {tuning, active_chords, highlighted_chord} = Music.decode_params(params)
     fretboard = Music.fretboard_data(tuning, active_chords)
 
     {:ok,
      assign(socket,
        tuning: tuning,
        active_chords: active_chords,
+       highlighted_chord: highlighted_chord,
        fretboard: fretboard,
        svg: svg_params(),
        chord_form: %{"root" => "C", "quality" => "major"},
@@ -80,13 +81,14 @@ defmodule FretboardWeb.FretboardLive do
 
   @impl true
   def handle_params(params, _uri, socket) do
-    {tuning, active_chords} = Music.decode_params(params)
+    {tuning, active_chords, highlighted_chord} = Music.decode_params(params)
     fretboard = Music.fretboard_data(tuning, active_chords)
 
     {:noreply,
      assign(socket,
        tuning: tuning,
        active_chords: active_chords,
+       highlighted_chord: highlighted_chord,
        fretboard: fretboard,
        modal_tuning: tuning,
        modal_preset: detect_preset(tuning)
@@ -106,7 +108,14 @@ defmodule FretboardWeb.FretboardLive do
       {:noreply, socket}
     else
       active_chords = socket.assigns.active_chords ++ [chord]
-      {:noreply, push_url_patch(socket, socket.assigns.tuning, active_chords)}
+
+      {:noreply,
+       push_url_patch(
+         socket,
+         socket.assigns.tuning,
+         active_chords,
+         socket.assigns.highlighted_chord
+       )}
     end
   end
 
@@ -114,7 +123,23 @@ defmodule FretboardWeb.FretboardLive do
   def handle_event("remove_chord", %{"index" => index_str}, socket) do
     index = String.to_integer(index_str)
     active_chords = List.delete_at(socket.assigns.active_chords, index)
-    {:noreply, push_url_patch(socket, socket.assigns.tuning, active_chords)}
+
+    highlighted_chord =
+      cond do
+        socket.assigns.highlighted_chord == nil ->
+          nil
+
+        socket.assigns.highlighted_chord == index ->
+          nil
+
+        socket.assigns.highlighted_chord > index ->
+          socket.assigns.highlighted_chord - 1
+
+        true ->
+          socket.assigns.highlighted_chord
+      end
+
+    {:noreply, push_url_patch(socket, socket.assigns.tuning, active_chords, highlighted_chord)}
   end
 
   @impl true
@@ -161,7 +186,7 @@ defmodule FretboardWeb.FretboardLive do
     {:noreply,
      socket
      |> assign(show_tuning_modal: false)
-     |> push_url_patch(tuning, socket.assigns.active_chords)}
+     |> push_url_patch(tuning, socket.assigns.active_chords, socket.assigns.highlighted_chord)}
   end
 
   @impl true
@@ -191,7 +216,25 @@ defmodule FretboardWeb.FretboardLive do
     {:noreply,
      socket
      |> assign(show_key_modal: false)
-     |> push_url_patch(socket.assigns.tuning, active_chords)}
+     |> push_url_patch(socket.assigns.tuning, active_chords, nil)}
+  end
+
+  @impl true
+  def handle_event("highlight_chord", %{"index" => index_str}, socket) do
+    index = String.to_integer(index_str)
+
+    highlighted_chord =
+      if socket.assigns.highlighted_chord == index,
+        do: nil,
+        else: index
+
+    {:noreply,
+     push_url_patch(
+       socket,
+       socket.assigns.tuning,
+       socket.assigns.active_chords,
+       highlighted_chord
+     )}
   end
 
   @impl true
@@ -382,7 +425,7 @@ defmodule FretboardWeb.FretboardLive do
                       cx={note_cx(pos.fret, @svg)}
                       cy={@svg.top_margin + visual_row * @svg.string_spacing}
                       r="8"
-                      fill={note_fill(pos.chords, @active_chords, @chord_colors)}
+                      fill={note_fill(pos.chords, @active_chords, @chord_colors, @highlighted_chord)}
                     />
                     <text
                       x={note_cx(pos.fret, @svg)}
@@ -407,8 +450,10 @@ defmodule FretboardWeb.FretboardLive do
       <div class="chords-wrapper">
         <%= for {chord, i} <- Enum.with_index(@active_chords) do %>
           <div
-            class="chord-chip"
+            class={"chord-chip#{if @highlighted_chord == i, do: " chord-chip--highlighted", else: ""}"}
             style={"background-color: #{Enum.at(@chord_colors, rem(i, length(@chord_colors)))}"}
+            phx-click="highlight_chord"
+            phx-value-index={i}
           >
             <div class="chord-chip-header">
               <span class="chord-chip-title">{Music.chord_label(chord.root, chord.quality)}</span>
@@ -607,12 +652,27 @@ defmodule FretboardWeb.FretboardLive do
   @doc """
   Determines the fill color for a note based on which chords it belongs to.
 
-  Single chord notes get that chord's color. Overlapping notes get neutral gray.
+  When a chord is highlighted, its notes render in that chord's color.
+  All other notes render in gray. When no chord is highlighted,
+  single chord notes get that chord's color, overlapping notes get neutral gray.
   """
-  @spec note_fill([String.t()], [map()], [String.t()]) :: String.t()
-  def note_fill(chords, _active_chords, _colors) when length(chords) > 1, do: @overlap_color
+  @spec note_fill([String.t()], [map()], [String.t()], non_neg_integer() | nil) :: String.t()
+  def note_fill(chords, active_chords, colors, highlighted_chord)
+      when is_integer(highlighted_chord) do
+    highlighted = Enum.at(active_chords, highlighted_chord)
+    highlighted_label = Music.chord_label(highlighted.root, highlighted.quality)
 
-  def note_fill([chord_label], active_chords, colors) do
+    if highlighted_label in chords do
+      Enum.at(colors, rem(highlighted_chord, length(colors)))
+    else
+      @overlap_color
+    end
+  end
+
+  def note_fill(chords, _active_chords, _colors, nil) when length(chords) > 1,
+    do: @overlap_color
+
+  def note_fill([chord_label], active_chords, colors, nil) do
     index =
       Enum.find_index(active_chords, fn c ->
         Music.chord_label(c.root, c.quality) == chord_label
@@ -621,7 +681,7 @@ defmodule FretboardWeb.FretboardLive do
     if index, do: Enum.at(colors, rem(index, length(colors))), else: @overlap_color
   end
 
-  def note_fill(_, _, _), do: @overlap_color
+  def note_fill(_, _, _, nil), do: @overlap_color
 
   @doc """
   Detects which preset matches a given tuning, or returns "Custom".
@@ -634,8 +694,8 @@ defmodule FretboardWeb.FretboardLive do
     end
   end
 
-  defp push_url_patch(socket, tuning, active_chords) do
-    params = Music.encode_params(tuning, active_chords)
+  defp push_url_patch(socket, tuning, active_chords, highlighted_chord) do
+    params = Music.encode_params(tuning, active_chords, highlighted_chord)
     query = URI.encode_query(params)
     path = if query == "", do: "/", else: "/?#{query}"
     push_patch(socket, to: path)

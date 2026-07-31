@@ -71,9 +71,26 @@ defmodule Fretboard.Music.URLCodec do
   """
   @spec encode_params([String.t()], [map()]) :: map()
   def encode_params(tuning, chords) do
-    %{}
-    |> maybe_put("chords", encode_chords(chords))
-    |> maybe_put("tuning", encode_tuning(tuning))
+    encode_params(tuning, chords, nil)
+  end
+
+  @doc """
+  Encodes tuning, chords, and an optional highlighted chord index into a query params map.
+  """
+  @spec encode_params([String.t()], [map()], non_neg_integer() | nil) :: map()
+  def encode_params(tuning, chords, highlighted_index) do
+    params =
+      %{}
+      |> maybe_put("chords", encode_chords(chords))
+      |> maybe_put("tuning", encode_tuning(tuning))
+
+    if highlighted_index != nil do
+      chord = Enum.at(chords, highlighted_index)
+      label = Chord.chord_label(chord.root, chord.quality)
+      Map.put(params, "highlight", label)
+    else
+      params
+    end
   end
 
   @doc """
@@ -118,13 +135,22 @@ defmodule Fretboard.Music.URLCodec do
   end
 
   @doc """
-  Decodes a full params map into `{tuning, active_chords}`.
+  Decodes a full params map into `{tuning, active_chords, highlighted_index}`.
   """
-  @spec decode_params(map()) :: {[String.t()], [map()]}
+  @spec decode_params(map()) :: {[String.t()], [map()], non_neg_integer() | nil}
   def decode_params(params) do
     tuning = decode_tuning(params["tuning"])
     chords = decode_chords(params["chords"])
-    {tuning, chords}
+    highlighted_index = find_highlighted_index(params["highlight"], chords)
+    {tuning, chords, highlighted_index}
+  end
+
+  defp find_highlighted_index(nil, _chords), do: nil
+
+  defp find_highlighted_index(label, chords) do
+    Enum.find_index(chords, fn %{root: root, quality: quality} ->
+      Chord.chord_label(root, quality) == label
+    end)
   end
 
   defp parse_chord(str) do

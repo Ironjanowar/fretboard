@@ -113,9 +113,16 @@ defmodule Fretboard.Music do
   def encode_params(tuning, active_chords), do: URLCodec.encode_params(tuning, active_chords)
 
   @doc """
-  Decodes URL query params into `{tuning, active_chords}`.
+  Encodes tuning, active chords, and highlighted index into URL query params.
   """
-  @spec decode_params(map()) :: {[String.t()], [map()]}
+  @spec encode_params([String.t()], [map()], non_neg_integer() | nil) :: map()
+  def encode_params(tuning, active_chords, highlighted_index),
+    do: URLCodec.encode_params(tuning, active_chords, highlighted_index)
+
+  @doc """
+  Decodes URL query params into `{tuning, active_chords, highlighted_index}`.
+  """
+  @spec decode_params(map()) :: {[String.t()], [map()], non_neg_integer() | nil}
   def decode_params(params), do: URLCodec.decode_params(params)
 
   defp build_chord_lookup(active_chords) do

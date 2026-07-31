@@ -129,6 +129,12 @@ body {
   font-weight: 600;
   color: #111827;
   padding: 0.75rem;
+  border: 2px solid transparent;
+}
+
+.chord-chip--highlighted {
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
 }
 
 .chord-chip-header {
