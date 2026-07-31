@@ -149,4 +149,115 @@ defmodule Fretboard.MusicTest do
       assert Music.scale_label(:minor) == "Minor"
     end
   end
+
+  describe "instruments/0" do
+    test "returns 3 instrument tuples" do
+      instruments = Music.instruments()
+      assert length(instruments) == 3
+    end
+
+    test "includes guitar tuple" do
+      assert {:guitar, "Guitar"} in Music.instruments()
+    end
+
+    test "includes bass_4 tuple" do
+      assert {:bass_4, "Bass (4-string)"} in Music.instruments()
+    end
+
+    test "includes bass_5 tuple" do
+      assert {:bass_5, "Bass (5-string)"} in Music.instruments()
+    end
+  end
+
+  describe "instrument/1" do
+    test "returns guitar map with correct keys" do
+      guitar = Music.instrument(:guitar)
+      assert guitar.name == "Guitar"
+      assert guitar.strings == 6
+      assert guitar.standard_tuning == ["E", "A", "D", "G", "B", "E"]
+      assert guitar.frets == 24
+      assert is_list(guitar.presets)
+      assert length(guitar.presets) == 9
+    end
+
+    test "returns bass_4 map with correct keys" do
+      bass_4 = Music.instrument(:bass_4)
+      assert bass_4.name == "Bass (4-string)"
+      assert bass_4.strings == 4
+      assert bass_4.standard_tuning == ["E", "A", "D", "G"]
+      assert bass_4.frets == 24
+      assert is_list(bass_4.presets)
+      assert length(bass_4.presets) == 3
+    end
+
+    test "returns bass_5 map with correct keys" do
+      bass_5 = Music.instrument(:bass_5)
+      assert bass_5.name == "Bass (5-string)"
+      assert bass_5.strings == 5
+      assert bass_5.standard_tuning == ["B", "E", "A", "D", "G"]
+      assert bass_5.frets == 24
+      assert is_list(bass_5.presets)
+      assert length(bass_5.presets) == 3
+    end
+  end
+
+  describe "instrument_strings/1" do
+    test "returns 6 for guitar" do
+      assert Music.instrument_strings(:guitar) == 6
+    end
+
+    test "returns 4 for bass_4" do
+      assert Music.instrument_strings(:bass_4) == 4
+    end
+  end
+
+  describe "instrument_standard_tuning/1" do
+    test "returns E A D G for bass_4" do
+      assert Music.instrument_standard_tuning(:bass_4) == ["E", "A", "D", "G"]
+    end
+
+    test "returns B E A D G for bass_5" do
+      assert Music.instrument_standard_tuning(:bass_5) == ["B", "E", "A", "D", "G"]
+    end
+  end
+
+  describe "instrument_tuning_presets/1" do
+    test "returns 9 guitar presets, same as tuning_presets/0" do
+      presets = Music.instrument_tuning_presets(:guitar)
+      assert length(presets) == 9
+      assert presets == Music.tuning_presets()
+    end
+
+    test "returns 3 bass_4 presets" do
+      presets = Music.instrument_tuning_presets(:bass_4)
+      assert length(presets) == 3
+    end
+  end
+
+  describe "instrument_preset_names/1" do
+    test "returns guitar preset names, same as tuning_preset_names/0" do
+      names = Music.instrument_preset_names(:guitar)
+      assert names == Music.tuning_preset_names()
+    end
+
+    test "returns bass_4 preset names" do
+      assert Music.instrument_preset_names(:bass_4) == ["Standard", "Drop D", "Half Step Down"]
+    end
+  end
+
+  describe "backward compatibility — tuning_presets/0" do
+    test "still returns the 9 guitar presets" do
+      presets = Music.tuning_presets()
+      assert length(presets) == 9
+      assert presets == Music.instrument_tuning_presets(:guitar)
+    end
+  end
+
+  describe "backward compatibility — tuning_preset_names/0" do
+    test "still returns the 9 guitar preset names" do
+      names = Music.tuning_preset_names()
+      assert length(names) == 9
+      assert names == Music.instrument_preset_names(:guitar)
+    end
+  end
 end

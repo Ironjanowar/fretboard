@@ -601,4 +601,212 @@ defmodule FretboardWeb.FretboardLiveTest do
       refute html =~ "chord-chip--highlighted"
     end
   end
+
+  describe "instrument selector" do
+    test "renders an instrument selector dropdown in the controls", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/")
+
+      assert html =~ ~s(id="instrument-select") or html =~ ~s(phx-click="change_instrument")
+    end
+
+    test "instrument selector shows all 3 instruments", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/")
+
+      assert html =~ "Guitar"
+      assert html =~ "Bass (4-string)"
+      assert html =~ "Bass (5-string)"
+    end
+
+    test "instrument selector defaults to Guitar", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/")
+
+      # The default selected instrument should be Guitar
+      assert html =~ ~s(id="instrument-select") or html =~ ~s(phx-click="change_instrument")
+
+      # Check that Guitar is the selected/default option
+      assert html =~ "Guitar"
+    end
+  end
+
+  describe "mount with instrument param" do
+    test "mount with instrument=bass_4 renders 4 string lines", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/?instrument=bass_4")
+
+      assert length(Regex.scan(~r/class="string-line"/, html)) == 4
+    end
+
+    test "mount with instrument=bass_5 renders 5 string lines", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/?instrument=bass_5")
+
+      assert length(Regex.scan(~r/class="string-line"/, html)) == 5
+    end
+
+    test "mount with instrument=bass_4 shows 4 tuning labels", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/?instrument=bass_4")
+
+      assert length(Regex.scan(~r/class="tuning-label"/, html)) == 4
+    end
+
+    test "mount with instrument=bass_5 shows 5 tuning labels", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/?instrument=bass_5")
+
+      assert length(Regex.scan(~r/class="tuning-label"/, html)) == 5
+    end
+
+    test "mount with instrument=bass_4 shows bass_4 standard tuning labels (E,A,D,G)", %{
+      conn: conn
+    } do
+      {:ok, _view, html} = live(conn, "/?instrument=bass_4")
+
+      labels =
+        Regex.scan(~r/class="tuning-label"[^>]*>\s*([A-G]#?)\s*</s, html)
+        |> Enum.map(fn [_, note] -> note end)
+
+      # bass_4 standard tuning DOM order (low to high): E, A, D, G
+      assert labels == ["E", "A", "D", "G"]
+    end
+
+    test "mount with instrument=bass_5 shows bass_5 standard tuning labels (B,E,A,D,G)", %{
+      conn: conn
+    } do
+      {:ok, _view, html} = live(conn, "/?instrument=bass_5")
+
+      labels =
+        Regex.scan(~r/class="tuning-label"[^>]*>\s*([A-G]#?)\s*</s, html)
+        |> Enum.map(fn [_, note] -> note end)
+
+      # bass_5 standard tuning DOM order (low to high): B, E, A, D, G
+      assert labels == ["B", "E", "A", "D", "G"]
+    end
+
+    test "mount without instrument defaults to 6 strings (guitar)", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/")
+
+      assert length(Regex.scan(~r/class="string-line"/, html)) == 6
+    end
+  end
+
+  describe "change_instrument event" do
+    test "changing to bass_4 updates the fretboard to 4 strings", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+
+      html = render_click(view, "change_instrument", %{"instrument" => "bass_4"})
+
+      assert length(Regex.scan(~r/class="string-line"/, html)) == 4
+    end
+
+    test "changing to bass_5 updates the fretboard to 5 strings", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+
+      html = render_click(view, "change_instrument", %{"instrument" => "bass_5"})
+
+      assert length(Regex.scan(~r/class="string-line"/, html)) == 5
+    end
+
+    test "changing instrument resets tuning to the new instrument's standard", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+
+      # Start with guitar (standard tuning E,A,D,G,B,E)
+      html = render_click(view, "change_instrument", %{"instrument" => "bass_4"})
+
+      labels =
+        Regex.scan(~r/class="tuning-label"[^>]*>\s*([A-G]#?)\s*</s, html)
+        |> Enum.map(fn [_, note] -> note end)
+
+      # bass_4 standard tuning DOM order (low to high): E, A, D, G
+      assert labels == ["E", "A", "D", "G"]
+    end
+
+    test "changing instrument keeps active chords", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/?chords=Cmaj")
+
+      html = render_click(view, "change_instrument", %{"instrument" => "bass_4"})
+
+      assert html =~ "Cmaj"
+      assert html =~ "chord-chip"
+    end
+
+    test "changing to bass_4 and then back to guitar restores 6 strings", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+
+      render_click(view, "change_instrument", %{"instrument" => "bass_4"})
+      html = render_click(view, "change_instrument", %{"instrument" => "guitar"})
+
+      assert length(Regex.scan(~r/class="string-line"/, html)) == 6
+    end
+  end
+
+  describe "tuning modal with instrument" do
+    test "opening tuning modal on bass_4 shows 4 string dropdowns", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/?instrument=bass_4")
+
+      html = view |> element("[phx-click=open_tuning_modal]") |> render_click()
+
+      for i <- 1..4 do
+        assert html =~ "String #{i}"
+      end
+
+      refute html =~ "String 5"
+      refute html =~ "String 6"
+    end
+
+    test "opening tuning modal on bass_5 shows 5 string dropdowns", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/?instrument=bass_5")
+
+      html = view |> element("[phx-click=open_tuning_modal]") |> render_click()
+
+      for i <- 1..5 do
+        assert html =~ "String #{i}"
+      end
+
+      refute html =~ "String 6"
+    end
+
+    test "tuning modal on bass_4 shows bass_4 presets", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/?instrument=bass_4")
+
+      html = view |> element("[phx-click=open_tuning_modal]") |> render_click()
+
+      assert html =~ "Standard"
+      refute html =~ "DADGAD"
+      refute html =~ "Open G"
+    end
+
+    test "tuning modal on bass_5 shows bass_5 presets", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/?instrument=bass_5")
+
+      html = view |> element("[phx-click=open_tuning_modal]") |> render_click()
+
+      assert html =~ "Standard"
+      assert html =~ "Half Step Down"
+      assert html =~ "Drop A"
+
+      # Guitar-only presets should NOT be present
+      refute html =~ "DADGAD"
+      refute html =~ "Open G"
+    end
+  end
+
+  describe "URL encoding with instrument" do
+    test "mount with instrument=bass_4 and chords preserves both", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/?instrument=bass_4&chords=Cmaj")
+
+      assert html =~ "Cmaj"
+      assert html =~ "chord-chip"
+      assert length(Regex.scan(~r/class="string-line"/, html)) == 4
+    end
+
+    test "mount with instrument=bass_5 and custom tuning preserves both", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/?instrument=bass_5&tuning=A,E,A,D,G")
+
+      assert length(Regex.scan(~r/class="string-line"/, html)) == 5
+
+      labels =
+        Regex.scan(~r/class="tuning-label"[^>]*>\s*([A-G]#?)\s*</s, html)
+        |> Enum.map(fn [_, note] -> note end)
+
+      # Custom tuning A,E,A,D,G DOM order (low to high): A, E, A, D, G
+      assert labels == ["A", "E", "A", "D", "G"]
+    end
+  end
 end

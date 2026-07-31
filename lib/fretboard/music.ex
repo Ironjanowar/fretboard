@@ -6,7 +6,7 @@ defmodule Fretboard.Music do
   It delegates to `Note`, `Chord`, and `Tuning` internally.
   """
 
-  alias Fretboard.Music.{Chord, Note, Scale, Tuning, URLCodec}
+  alias Fretboard.Music.{Chord, Instrument, Note, Scale, Tuning, URLCodec}
 
   @doc """
   Returns standard guitar tuning.
@@ -15,16 +15,53 @@ defmodule Fretboard.Music do
   def standard_tuning, do: Tuning.standard()
 
   @doc """
-  Returns a list of named tuning presets.
+  Returns a list of named tuning presets (guitar, for backward compatibility).
   """
   @spec tuning_presets() :: [{String.t(), [String.t()]}]
-  def tuning_presets, do: Tuning.presets()
+  def tuning_presets, do: instrument_tuning_presets(:guitar)
 
   @doc """
-  Returns just the names of all tuning presets.
+  Returns just the names of all tuning presets (guitar, for backward
+  compatibility).
   """
   @spec tuning_preset_names() :: [String.t()]
-  def tuning_preset_names, do: Tuning.preset_names()
+  def tuning_preset_names, do: instrument_preset_names(:guitar)
+
+  @doc """
+  Returns a list of `{key, label}` tuples for all supported instruments.
+  """
+  @spec instruments() :: [{atom(), String.t()}]
+  def instruments, do: Instrument.instruments()
+
+  @doc """
+  Returns the full instrument definition map for the given instrument key.
+  """
+  @spec instrument(atom()) :: map() | nil
+  def instrument(key), do: Instrument.instrument(key)
+
+  @doc """
+  Returns the number of strings for the given instrument.
+  """
+  @spec instrument_strings(atom()) :: pos_integer()
+  def instrument_strings(key), do: Instrument.instrument_strings(key)
+
+  @doc """
+  Returns the standard tuning for the given instrument.
+  """
+  @spec instrument_standard_tuning(atom()) :: [String.t()]
+  def instrument_standard_tuning(key), do: Instrument.instrument_standard_tuning(key)
+
+  @doc """
+  Returns the list of tuning presets for the given instrument.
+  """
+  @spec instrument_tuning_presets(atom()) :: [{String.t(), [String.t()]}]
+  def instrument_tuning_presets(key), do: Instrument.instrument_tuning_presets(key)
+
+  @doc """
+  Returns just the names of all tuning presets for the given instrument.
+  """
+  @spec instrument_preset_names(atom()) :: [String.t()]
+  def instrument_preset_names(key), do: Instrument.instrument_preset_names(key)
 
   @doc """
   Returns available chord qualities.
@@ -120,9 +157,16 @@ defmodule Fretboard.Music do
     do: URLCodec.encode_params(tuning, active_chords, highlighted_index)
 
   @doc """
-  Decodes URL query params into `{tuning, active_chords, highlighted_index}`.
+  Encodes instrument, tuning, active chords, and highlighted index into URL query params.
   """
-  @spec decode_params(map()) :: {[String.t()], [map()], non_neg_integer() | nil}
+  @spec encode_params(atom(), [String.t()], [map()], non_neg_integer() | nil) :: map()
+  def encode_params(instrument, tuning, active_chords, highlighted_index),
+    do: URLCodec.encode_params(instrument, tuning, active_chords, highlighted_index)
+
+  @doc """
+  Decodes URL query params into `{instrument, tuning, active_chords, highlighted_index}`.
+  """
+  @spec decode_params(map()) :: {atom(), [String.t()], [map()], non_neg_integer() | nil}
   def decode_params(params), do: URLCodec.decode_params(params)
 
   defp build_chord_lookup(active_chords) do

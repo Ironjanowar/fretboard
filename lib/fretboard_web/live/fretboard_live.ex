@@ -2,9 +2,9 @@ defmodule FretboardWeb.FretboardLive do
   @moduledoc """
   Main LiveView for the fretboard visualizer.
 
-  Renders an SVG guitar fretboard with 24 frets and 6 strings.
-  Supports adding/removing chords, coloring notes by chord,
-  and clickable tuning labels.
+  Renders an SVG fretboard with 24 frets and a configurable number of
+  strings (6-string guitar, 4- or 5-string bass). Supports adding/removing
+  chords, coloring notes by chord, and selecting tuning presets.
   """
 
   use FretboardWeb, :live_view
@@ -12,7 +12,6 @@ defmodule FretboardWeb.FretboardLive do
   alias Fretboard.Music
 
   @fret_count 24
-  @string_count 6
   @marker_frets [3, 5, 7, 9, 12, 15, 17, 19, 21, 24]
   @double_marker_frets MapSet.new([12, 24])
 
@@ -39,31 +38,33 @@ defmodule FretboardWeb.FretboardLive do
 
   @impl true
   def mount(params, _session, socket) do
-    {tuning, active_chords, highlighted_chord} = Music.decode_params(params)
+    {instrument, tuning, active_chords, highlighted_chord} = Music.decode_params(params)
     fretboard = Music.fretboard_data(tuning, active_chords)
+    string_count = Music.instrument_strings(instrument)
 
     {:ok,
      assign(socket,
+       instrument: instrument,
        tuning: tuning,
        active_chords: active_chords,
        highlighted_chord: highlighted_chord,
        fretboard: fretboard,
-       svg: svg_params(),
+       svg: svg_params(string_count),
        chord_form: %{"root" => "C", "quality" => "major"},
        chord_colors: @chord_colors,
        chromatic_notes: @chromatic_notes,
        show_tuning_modal: false,
        modal_tuning: tuning,
-       modal_preset: detect_preset(tuning),
+       modal_preset: detect_preset(tuning, instrument),
        show_key_modal: false,
        key_tonic: "C",
        key_scale_type: :major
      )}
   end
 
-  defp svg_params do
+  defp svg_params(string_count) do
     fb_w = @left_margin + (@fret_count + 1) * @fret_width
-    fb_h = @top_margin + (@string_count + 1) * @string_spacing
+    fb_h = @top_margin + (string_count + 1) * @string_spacing
 
     %{
       left_margin: @left_margin,
@@ -71,7 +72,7 @@ defmodule FretboardWeb.FretboardLive do
       fret_width: @fret_width,
       string_spacing: @string_spacing,
       fret_count: @fret_count,
-      string_count: @string_count,
+      string_count: string_count,
       width: fb_w,
       height: fb_h,
       marker_frets: @marker_frets,
@@ -81,17 +82,20 @@ defmodule FretboardWeb.FretboardLive do
 
   @impl true
   def handle_params(params, _uri, socket) do
-    {tuning, active_chords, highlighted_chord} = Music.decode_params(params)
+    {instrument, tuning, active_chords, highlighted_chord} = Music.decode_params(params)
     fretboard = Music.fretboard_data(tuning, active_chords)
+    string_count = Music.instrument_strings(instrument)
 
     {:noreply,
      assign(socket,
+       instrument: instrument,
        tuning: tuning,
        active_chords: active_chords,
        highlighted_chord: highlighted_chord,
        fretboard: fretboard,
+       svg: svg_params(string_count),
        modal_tuning: tuning,
-       modal_preset: detect_preset(tuning)
+       modal_preset: detect_preset(tuning, instrument)
      )}
   end
 
@@ -112,6 +116,7 @@ defmodule FretboardWeb.FretboardLive do
       {:noreply,
        push_url_patch(
          socket,
+         socket.assigns.instrument,
          socket.assigns.tuning,
          active_chords,
          socket.assigns.highlighted_chord
@@ -139,7 +144,14 @@ defmodule FretboardWeb.FretboardLive do
           socket.assigns.highlighted_chord
       end
 
-    {:noreply, push_url_patch(socket, socket.assigns.tuning, active_chords, highlighted_chord)}
+    {:noreply,
+     push_url_patch(
+       socket,
+       socket.assigns.instrument,
+       socket.assigns.tuning,
+       active_chords,
+       highlighted_chord
+     )}
   end
 
   @impl true
@@ -148,7 +160,7 @@ defmodule FretboardWeb.FretboardLive do
      assign(socket,
        show_tuning_modal: true,
        modal_tuning: socket.assigns.tuning,
-       modal_preset: detect_preset(socket.assigns.tuning)
+       modal_preset: detect_preset(socket.assigns.tuning, socket.assigns.instrument)
      )}
   end
 
@@ -159,7 +171,7 @@ defmodule FretboardWeb.FretboardLive do
 
   @impl true
   def handle_event("select_preset", %{"preset" => preset_name}, socket) do
-    presets = Music.tuning_presets()
+    presets = Music.instrument_tuning_presets(socket.assigns.instrument)
 
     case Enum.find(presets, fn {name, _} -> name == preset_name end) do
       {_name, notes} ->
@@ -176,7 +188,10 @@ defmodule FretboardWeb.FretboardLive do
     modal_tuning = List.replace_at(socket.assigns.modal_tuning, string_idx, note)
 
     {:noreply,
-     assign(socket, modal_tuning: modal_tuning, modal_preset: detect_preset(modal_tuning))}
+     assign(socket,
+       modal_tuning: modal_tuning,
+       modal_preset: detect_preset(modal_tuning, socket.assigns.instrument)
+     )}
   end
 
   @impl true
@@ -186,7 +201,12 @@ defmodule FretboardWeb.FretboardLive do
     {:noreply,
      socket
      |> assign(show_tuning_modal: false)
-     |> push_url_patch(tuning, socket.assigns.active_chords, socket.assigns.highlighted_chord)}
+     |> push_url_patch(
+       socket.assigns.instrument,
+       tuning,
+       socket.assigns.active_chords,
+       socket.assigns.highlighted_chord
+     )}
   end
 
   @impl true
@@ -216,7 +236,7 @@ defmodule FretboardWeb.FretboardLive do
     {:noreply,
      socket
      |> assign(show_key_modal: false)
-     |> push_url_patch(socket.assigns.tuning, active_chords, nil)}
+     |> push_url_patch(socket.assigns.instrument, socket.assigns.tuning, active_chords, nil)}
   end
 
   @impl true
@@ -231,9 +251,25 @@ defmodule FretboardWeb.FretboardLive do
     {:noreply,
      push_url_patch(
        socket,
+       socket.assigns.instrument,
        socket.assigns.tuning,
        socket.assigns.active_chords,
        highlighted_chord
+     )}
+  end
+
+  @impl true
+  def handle_event("change_instrument", %{"instrument" => instrument_str}, socket) do
+    new_instrument = String.to_existing_atom(instrument_str)
+    new_tuning = Music.instrument_standard_tuning(new_instrument)
+
+    {:noreply,
+     push_url_patch(
+       socket,
+       new_instrument,
+       new_tuning,
+       socket.assigns.active_chords,
+       nil
      )}
   end
 
@@ -251,6 +287,19 @@ defmodule FretboardWeb.FretboardLive do
           >
             🎸 Tuning
           </button>
+          <form phx-change="change_instrument" id="instrument-form">
+            <select
+              id="instrument-select"
+              name="instrument"
+              class="form-select"
+            >
+              <%= for {value, label} <- Music.instruments() do %>
+                <option value={value} selected={@instrument == value}>
+                  {label}
+                </option>
+              <% end %>
+            </select>
+          </form>
           <button
             type="button"
             phx-click="open_key_modal"
@@ -493,7 +542,7 @@ defmodule FretboardWeb.FretboardLive do
                 class="form-select-full"
                 name="preset"
               >
-                <%= for name <- Music.tuning_preset_names() do %>
+                <%= for name <- Music.instrument_preset_names(@instrument) do %>
                   <option value={name} selected={@modal_preset == name}>{name}</option>
                 <% end %>
                 <option value="Custom" selected={@modal_preset == "Custom"}>Custom</option>
@@ -506,8 +555,8 @@ defmodule FretboardWeb.FretboardLive do
               id={"string-dropdowns-#{Enum.join(@modal_tuning, "")}"}
               phx-update="replace"
             >
-              <%= for string_num <- 6..1//-1 do %>
-                <% string_idx = 6 - string_num %>
+              <%= for string_num <- @svg.string_count..1//-1 do %>
+                <% string_idx = @svg.string_count - string_num %>
                 <% current_note = Enum.at(@modal_tuning, string_idx) %>
                 <form
                   phx-change="change_string"
@@ -684,18 +733,20 @@ defmodule FretboardWeb.FretboardLive do
   def note_fill(_, _, _, nil), do: @overlap_color
 
   @doc """
-  Detects which preset matches a given tuning, or returns "Custom".
+  Detects which preset matches a given tuning for a given instrument, or returns "Custom".
   """
-  @spec detect_preset([String.t()]) :: String.t()
-  def detect_preset(tuning) do
-    case Enum.find(Music.tuning_presets(), fn {_name, notes} -> notes == tuning end) do
+  @spec detect_preset([String.t()], atom()) :: String.t()
+  def detect_preset(tuning, instrument) do
+    case Enum.find(Music.instrument_tuning_presets(instrument), fn {_name, notes} ->
+           notes == tuning
+         end) do
       {name, _notes} -> name
       nil -> "Custom"
     end
   end
 
-  defp push_url_patch(socket, tuning, active_chords, highlighted_chord) do
-    params = Music.encode_params(tuning, active_chords, highlighted_chord)
+  defp push_url_patch(socket, instrument, tuning, active_chords, highlighted_chord) do
+    params = Music.encode_params(instrument, tuning, active_chords, highlighted_chord)
     query = URI.encode_query(params)
     path = if query == "", do: "/", else: "/?#{query}"
     push_patch(socket, to: path)

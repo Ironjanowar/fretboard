@@ -2,10 +2,10 @@ defmodule Fretboard.Music.URLCodec do
   @moduledoc """
   Serializes and deserializes fretboard state to/from URL query parameters.
 
-  Enables shareable URLs that restore tuning and active chords.
+  Enables shareable URLs that restore instrument, tuning, and active chords.
   """
 
-  alias Fretboard.Music.{Chord, Note, Tuning}
+  alias Fretboard.Music.{Chord, Instrument, Note}
 
   @labels_to_quality %{
     "maj" => :major,
@@ -22,6 +22,18 @@ defmodule Fretboard.Music.URLCodec do
   }
 
   @valid_notes MapSet.new(Note.chromatic_scale())
+
+  @instrument_to_string %{
+    guitar: "guitar",
+    bass_4: "bass_4",
+    bass_5: "bass_5"
+  }
+
+  @string_to_instrument %{
+    "guitar" => :guitar,
+    "bass_4" => :bass_4,
+    "bass_5" => :bass_5
+  }
 
   @doc """
   Encodes a list of active chords into a comma-separated string.
@@ -49,7 +61,7 @@ defmodule Fretboard.Music.URLCodec do
   @doc """
   Encodes a tuning into a comma-separated string.
 
-  Returns `nil` if the tuning matches standard tuning.
+  Returns `nil` if the tuning matches standard guitar tuning.
 
   ## Examples
 
@@ -61,7 +73,19 @@ defmodule Fretboard.Music.URLCodec do
   """
   @spec encode_tuning([String.t()]) :: String.t() | nil
   def encode_tuning(tuning) do
-    if tuning == Tuning.standard(), do: nil, else: Enum.join(tuning, ",")
+    encode_tuning(:guitar, tuning)
+  end
+
+  @doc """
+  Encodes a tuning for the given instrument into a comma-separated string.
+
+  Returns `nil` if the tuning matches the instrument's standard tuning.
+  """
+  @spec encode_tuning(atom(), [String.t()]) :: String.t() | nil
+  def encode_tuning(instrument, tuning) do
+    standard = Instrument.instrument_standard_tuning(instrument)
+
+    if tuning == standard, do: nil, else: Enum.join(tuning, ",")
   end
 
   @doc """
@@ -71,18 +95,38 @@ defmodule Fretboard.Music.URLCodec do
   """
   @spec encode_params([String.t()], [map()]) :: map()
   def encode_params(tuning, chords) do
-    encode_params(tuning, chords, nil)
+    encode_params(:guitar, tuning, chords)
   end
 
   @doc """
   Encodes tuning, chords, and an optional highlighted chord index into a query params map.
+
+  When called with a list as the first argument, defaults the instrument to `:guitar`.
+  When called with an instrument atom as the first argument, includes the "instrument"
+  key in the params when the instrument is not `:guitar`.
   """
   @spec encode_params([String.t()], [map()], non_neg_integer() | nil) :: map()
-  def encode_params(tuning, chords, highlighted_index) do
+  def encode_params(tuning, chords, highlighted_index) when is_list(tuning) do
+    encode_params(:guitar, tuning, chords, highlighted_index)
+  end
+
+  @spec encode_params(atom(), [String.t()], [map()]) :: map()
+  def encode_params(instrument, tuning, chords) when is_atom(instrument) do
+    encode_params(instrument, tuning, chords, nil)
+  end
+
+  @doc """
+  Encodes instrument, tuning, chords, and a highlighted chord index into a query params map.
+
+  Includes the "instrument" key when the instrument is not `:guitar`.
+  """
+  @spec encode_params(atom(), [String.t()], [map()], non_neg_integer() | nil) :: map()
+  def encode_params(instrument, tuning, chords, highlighted_index) do
     params =
       %{}
+      |> maybe_put_instrument(instrument)
       |> maybe_put("chords", encode_chords(chords))
-      |> maybe_put("tuning", encode_tuning(tuning))
+      |> maybe_put("tuning", encode_tuning(instrument, tuning))
 
     if highlighted_index != nil do
       chord = Enum.at(chords, highlighted_index)
@@ -119,30 +163,44 @@ defmodule Fretboard.Music.URLCodec do
   @doc """
   Decodes a comma-separated tuning string into a list of notes.
 
-  Returns standard tuning if input is nil or invalid.
+  Returns standard guitar tuning if input is nil or invalid.
   """
   @spec decode_tuning(String.t() | nil) :: [String.t()]
-  def decode_tuning(nil), do: Tuning.standard()
-
   def decode_tuning(str) do
-    notes = String.split(str, ",", trim: true)
+    decode_tuning(str, :guitar)
+  end
 
-    if length(notes) == 6 and Enum.all?(notes, &MapSet.member?(@valid_notes, &1)) do
+  @doc """
+  Decodes a comma-separated tuning string into a list of notes for the given instrument.
+
+  Returns the instrument's standard tuning if input is nil or invalid.
+  """
+  @spec decode_tuning(String.t() | nil, atom()) :: [String.t()]
+  def decode_tuning(nil, instrument) do
+    Instrument.instrument_standard_tuning(instrument)
+  end
+
+  def decode_tuning(str, instrument) do
+    notes = String.split(str, ",", trim: true)
+    expected_count = Instrument.instrument_strings(instrument)
+
+    if length(notes) == expected_count and Enum.all?(notes, &MapSet.member?(@valid_notes, &1)) do
       notes
     else
-      Tuning.standard()
+      Instrument.instrument_standard_tuning(instrument)
     end
   end
 
   @doc """
-  Decodes a full params map into `{tuning, active_chords, highlighted_index}`.
+  Decodes a full params map into `{instrument, tuning, active_chords, highlighted_index}`.
   """
-  @spec decode_params(map()) :: {[String.t()], [map()], non_neg_integer() | nil}
+  @spec decode_params(map()) :: {atom(), [String.t()], [map()], non_neg_integer() | nil}
   def decode_params(params) do
-    tuning = decode_tuning(params["tuning"])
+    instrument = decode_instrument(params["instrument"])
+    tuning = decode_tuning(params["tuning"], instrument)
     chords = decode_chords(params["chords"])
     highlighted_index = find_highlighted_index(params["highlight"], chords)
-    {tuning, chords, highlighted_index}
+    {instrument, tuning, chords, highlighted_index}
   end
 
   defp find_highlighted_index(nil, _chords), do: nil
@@ -151,6 +209,18 @@ defmodule Fretboard.Music.URLCodec do
     Enum.find_index(chords, fn %{root: root, quality: quality} ->
       Chord.chord_label(root, quality) == label
     end)
+  end
+
+  defp decode_instrument(nil), do: :guitar
+
+  defp decode_instrument(str) do
+    Map.get(@string_to_instrument, str, :guitar)
+  end
+
+  defp maybe_put_instrument(map, :guitar), do: map
+
+  defp maybe_put_instrument(map, instrument) do
+    Map.put(map, "instrument", Map.fetch!(@instrument_to_string, instrument))
   end
 
   defp parse_chord(str) do
