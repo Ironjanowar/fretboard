@@ -260,4 +260,62 @@ defmodule Fretboard.MusicTest do
       assert names == Music.instrument_preset_names(:guitar)
     end
   end
+
+  describe "available_progressions/0" do
+    test "delegates to Progression and returns non-empty list" do
+      progressions = Music.available_progressions()
+      assert is_list(progressions)
+      assert length(progressions) > 0
+      assert :pop_i_v_vi_iv in progressions
+    end
+  end
+
+  describe "grouped_progressions/0" do
+    test "delegates to Progression and returns grouped categories" do
+      groups = Music.grouped_progressions()
+      assert is_list(groups)
+      names = Enum.map(groups, &elem(&1, 0))
+      assert "Famous / Classic" in names
+      assert "Jazz / Sophisticated" in names
+    end
+  end
+
+  describe "progression/1" do
+    test "returns progression map for valid id" do
+      prog = Music.progression(:pop_i_v_vi_iv)
+      assert prog.id == :pop_i_v_vi_iv
+      assert prog.name =~ "I-V-vi-IV"
+    end
+
+    test "returns nil for invalid id" do
+      assert Music.progression(:nonexistent) == nil
+    end
+  end
+
+  describe "progression_label/1" do
+    test "returns display name" do
+      label = Music.progression_label(:pop_i_v_vi_iv)
+      assert is_binary(label)
+      assert label =~ "I-V-vi-IV"
+    end
+  end
+
+  describe "progression_chords/2" do
+    test "delegates to Progression and resolves chords" do
+      chords = Music.progression_chords("C", :pop_i_v_vi_iv)
+
+      assert [
+               %{root: "C", quality: :major},
+               %{root: "G", quality: :major},
+               %{root: "A", quality: :minor},
+               %{root: "F", quality: :major}
+             ] =
+               chords
+    end
+
+    test "works with minor key progression" do
+      chords = Music.progression_chords("A", :andalusian_cadence)
+      assert [%{root: "A", quality: :minor} | _] = chords
+    end
+  end
 end

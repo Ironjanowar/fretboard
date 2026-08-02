@@ -559,6 +559,119 @@ defmodule FretboardWeb.FretboardLiveTest do
     end
   end
 
+  describe "progressions button" do
+    test "renders a Progressions button in controls", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/")
+      assert html =~ "Progressions"
+    end
+  end
+
+  describe "progression modal" do
+    test "progression modal is hidden by default", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/")
+      refute html =~ "progression-modal"
+    end
+
+    test "clicking Progressions button opens the modal", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      html = view |> element("[phx-click=open_progression_modal]") |> render_click()
+      assert html =~ "progression-modal"
+    end
+
+    test "modal shows progression selector with categories", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      html = view |> element("[phx-click=open_progression_modal]") |> render_click()
+      assert html =~ "Famous / Classic"
+      assert html =~ "Jazz / Sophisticated"
+    end
+
+    test "modal shows tonic selector", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      html = view |> element("[phx-click=open_progression_modal]") |> render_click()
+      assert html =~ "progression-tonic-select" or html =~ "name=\"progression[tonic]\""
+    end
+
+    test "modal shows preview chord chips", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      html = view |> element("[phx-click=open_progression_modal]") |> render_click()
+      # Default progression is Pop Punk I-V-vi-IV in C → C, G, Am, F
+      assert html =~ "Cmaj"
+      assert html =~ "Gmaj"
+    end
+
+    test "applying progression replaces all active chords", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      # Open modal and apply
+      view |> element("[phx-click=open_progression_modal]") |> render_click()
+      html = render_click(view, "apply_progression", %{})
+      # Pop Punk in C → 4 chords
+      assert length(Regex.scan(~r/chord-chip\"/, html)) == 4
+      assert html =~ "Cmaj"
+      assert html =~ "Gmaj"
+      refute html =~ "progression-modal"
+    end
+
+    test "canceling progression modal doesn't change active chords", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      # Add a chord first
+      view |> form("#chord-form", %{chord: %{root: "A", quality: "minor"}}) |> render_submit()
+      # Open modal and cancel
+      view |> element("[phx-click=open_progression_modal]") |> render_click()
+      html = render_click(view, "close_progression_modal", %{})
+      refute html =~ "progression-modal"
+      assert html =~ "Amin"
+      assert length(Regex.scan(~r/chord-chip\"/, html)) == 1
+    end
+
+    test "changing progression updates preview", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      view |> element("[phx-click=open_progression_modal]") |> render_click()
+      # Change to andalusian cadence in A
+      html =
+        render_change(view, "update_progression", %{
+          "progression" => %{"id" => "andalusian_cadence", "tonic" => "A"}
+        })
+
+      # Andalusian in A → Am, G, F, E
+      assert html =~ "Amin"
+    end
+
+    test "changing tonic updates preview", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      view |> element("[phx-click=open_progression_modal]") |> render_click()
+      # Change to G tonic
+      html =
+        render_change(view, "update_progression", %{
+          "progression" => %{"id" => "pop_i_v_vi_iv", "tonic" => "G"}
+        })
+
+      # Pop Punk in G → G, D, Em, C
+      assert html =~ "Gmaj"
+      assert html =~ "Dmaj"
+    end
+
+    test "after applying progression, user can still remove individual chords", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      view |> element("[phx-click=open_progression_modal]") |> render_click()
+      render_click(view, "apply_progression", %{})
+      # Remove the first chord
+      html = view |> element("[phx-click=remove_chord][phx-value-index='0']") |> render_click()
+      # Should have one fewer chip
+      chips_before = 4
+      assert length(Regex.scan(~r/chord-chip\"/, html)) == chips_before - 1
+    end
+
+    test "applying progression clears highlighted chord", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/?chords=Cmaj")
+      # Highlight the chord
+      render_click(view, "highlight_chord", %{"index" => "0"})
+      # Apply a progression
+      view |> element("[phx-click=open_progression_modal]") |> render_click()
+      html = render_click(view, "apply_progression", %{})
+      refute html =~ "chord-chip--highlighted"
+    end
+  end
+
   describe "highlight in URL params" do
     test "mount with highlight param highlights the correct chord", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/?chords=Cmaj,Amin&highlight=Cmaj")

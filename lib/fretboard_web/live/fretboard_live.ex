@@ -58,7 +58,10 @@ defmodule FretboardWeb.FretboardLive do
        modal_preset: detect_preset(tuning, instrument),
        show_key_modal: false,
        key_tonic: "C",
-       key_scale_type: :major
+       key_scale_type: :major,
+       show_progression_modal: false,
+       progression_id: :pop_i_v_vi_iv,
+       progression_tonic: "C"
      )}
   end
 
@@ -240,6 +243,42 @@ defmodule FretboardWeb.FretboardLive do
   end
 
   @impl true
+  def handle_event("open_progression_modal", _params, socket) do
+    {:noreply,
+     assign(socket,
+       show_progression_modal: true,
+       progression_id: :pop_i_v_vi_iv,
+       progression_tonic: "C"
+     )}
+  end
+
+  @impl true
+  def handle_event("close_progression_modal", _params, socket) do
+    {:noreply, assign(socket, show_progression_modal: false)}
+  end
+
+  @impl true
+  def handle_event(
+        "update_progression",
+        %{"progression" => %{"id" => id, "tonic" => tonic}},
+        socket
+      ) do
+    {:noreply,
+     assign(socket, progression_id: String.to_existing_atom(id), progression_tonic: tonic)}
+  end
+
+  @impl true
+  def handle_event("apply_progression", _params, socket) do
+    active_chords =
+      Music.progression_chords(socket.assigns.progression_tonic, socket.assigns.progression_id)
+
+    {:noreply,
+     socket
+     |> assign(show_progression_modal: false)
+     |> push_url_patch(socket.assigns.instrument, socket.assigns.tuning, active_chords, nil)}
+  end
+
+  @impl true
   def handle_event("highlight_chord", %{"index" => index_str}, socket) do
     index = String.to_integer(index_str)
 
@@ -306,6 +345,13 @@ defmodule FretboardWeb.FretboardLive do
             class="btn btn-secondary"
           >
             🎵 Key
+          </button>
+          <button
+            type="button"
+            phx-click="open_progression_modal"
+            class="btn btn-secondary"
+          >
+            🎼 Progressions
           </button>
           <form
             id="chord-form"
@@ -677,6 +723,91 @@ defmodule FretboardWeb.FretboardLive do
               <button
                 type="button"
                 phx-click="apply_key"
+                class="btn btn-primary"
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <%!-- Progression Modal --%>
+      <%= if @show_progression_modal do %>
+        <div
+          id="progression-modal"
+          class="modal-overlay"
+        >
+          <div class="modal-backdrop" phx-click="close_progression_modal"></div>
+          <div class="modal-content">
+            <h2 class="modal-title">Chord Progressions</h2>
+
+            <form phx-change="update_progression" id="progression-form">
+              <div class="form-row">
+                <div class="form-col">
+                  <label class="form-label">Progression</label>
+                  <select
+                    id="progression-select"
+                    class="form-select-full"
+                    name="progression[id]"
+                  >
+                    <%= for {category, progressions} <- Music.grouped_progressions() do %>
+                      <optgroup label={category}>
+                        <%= for prog <- progressions do %>
+                          <option value={prog.id} selected={@progression_id == prog.id}>
+                            {prog.name}
+                          </option>
+                        <% end %>
+                      </optgroup>
+                    <% end %>
+                  </select>
+                </div>
+                <div class="form-col">
+                  <label class="form-label">Tonic</label>
+                  <select
+                    id="progression-tonic-select"
+                    class="form-select-full"
+                    name="progression[tonic]"
+                  >
+                    <%= for note <- @chromatic_notes do %>
+                      <option value={note} selected={@progression_tonic == note}>{note}</option>
+                    <% end %>
+                  </select>
+                </div>
+              </div>
+            </form>
+
+            <%!-- Preview Chords --%>
+            <div class="form-group-spaced">
+              <label class="section-label">Chords</label>
+              <div
+                class="key-preview-wrapper"
+                id={"progression-preview-#{@progression_tonic}-#{@progression_id}"}
+                phx-update="replace"
+              >
+                <%= for {chord, i} <- Enum.with_index(Music.progression_chords(@progression_tonic, @progression_id)) do %>
+                  <span
+                    class="key-preview-chip"
+                    style={"background-color: #{Enum.at(@chord_colors, rem(i, length(@chord_colors)))}"}
+                  >
+                    {Music.chord_label(chord.root, chord.quality)}
+                  </span>
+                <% end %>
+              </div>
+            </div>
+
+            <%!-- Buttons --%>
+            <div class="modal-buttons">
+              <button
+                type="button"
+                phx-click="close_progression_modal"
+                class="btn btn-ghost"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                phx-click="apply_progression"
                 class="btn btn-primary"
               >
                 Apply

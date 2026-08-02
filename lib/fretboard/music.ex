@@ -6,7 +6,7 @@ defmodule Fretboard.Music do
   It delegates to `Note`, `Chord`, and `Tuning` internally.
   """
 
-  alias Fretboard.Music.{Chord, Instrument, Note, Scale, Tuning, URLCodec}
+  alias Fretboard.Music.{Chord, Instrument, Note, Progression, Scale, Tuning, URLCodec}
 
   @doc """
   Returns standard guitar tuning.
@@ -122,6 +122,39 @@ defmodule Fretboard.Music do
   """
   @spec scale_label(atom()) :: String.t()
   def scale_label(scale_type), do: Scale.scale_label(scale_type)
+
+  @doc """
+  Returns the list of available chord progression ids.
+  """
+  @spec available_progressions() :: [atom()]
+  def available_progressions, do: Progression.available_progressions()
+
+  @doc """
+  Returns chord progressions organized in groups for UI display.
+  """
+  @spec grouped_progressions() :: [{String.t(), [map()]}]
+  def grouped_progressions, do: Progression.grouped_progressions()
+
+  @doc """
+  Returns the progression map for the given id, or `nil` if not found.
+  """
+  @spec progression(atom()) :: map() | nil
+  def progression(id), do: Progression.progression(id)
+
+  @doc """
+  Returns the display label for a chord progression id, or `nil` if not found.
+  """
+  @spec progression_label(atom()) :: String.t() | nil
+  def progression_label(id), do: Progression.progression_label(id)
+
+  @doc """
+  Resolves a progression to a list of chord maps for the given tonic.
+
+  Each chord is `%{root: String.t(), quality: atom()}`.
+  """
+  @spec progression_chords(String.t(), atom()) :: [%{root: String.t(), quality: atom()}]
+  def progression_chords(tonic, progression_id),
+    do: Progression.progression_chords(tonic, progression_id)
 
   @doc """
   Builds the full fretboard data structure.
