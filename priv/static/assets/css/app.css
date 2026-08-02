@@ -358,3 +358,33 @@ body {
 .hidden {
   display: none !important;
 }
+
+/* ===== Key Suggestions ===== */
+.key-suggestions-wrapper {
+  width: 100%;
+  max-width: 80rem;
+  margin-top: 1rem;
+}
+
+.key-suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+}
+
+.key-suggestion-label {
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.key-suggestion-modes {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-left: 0.5rem;
+}
+
+.text-muted {
+  color: #6b7280;
+  font-size: 0.875rem;
+}

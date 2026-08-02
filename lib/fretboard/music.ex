@@ -129,6 +129,27 @@ defmodule Fretboard.Music do
   def scale_label(scale_type), do: Scale.scale_label(scale_type)
 
   @doc """
+  Returns the notes of a scale given a tonic and scale type.
+
+  ## Examples
+
+      iex> Fretboard.Music.scale_notes("C", :major)
+      ["C", "D", "E", "F", "G", "A", "B"]
+  """
+  @spec scale_notes(String.t(), atom()) :: [String.t()]
+  def scale_notes(tonic, scale_type), do: Scale.scale_notes(tonic, scale_type)
+
+  @doc """
+  Suggests candidate keys that contain all notes of the given chords.
+
+  Each chord is a map with `:root` and `:quality`. Returns a list of
+  `%{tonic, scale_type, score, total, diatonic_chords}` maps sorted by
+  score descending, then tonic, then scale_type.
+  """
+  @spec suggest_keys([%{root: String.t(), quality: atom()}]) :: [map()]
+  def suggest_keys(chords), do: Scale.suggest_keys(chords)
+
+  @doc """
   Returns the list of available chord progression ids.
   """
   @spec available_progressions() :: [atom()]

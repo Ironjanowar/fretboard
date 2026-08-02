@@ -1014,4 +1014,65 @@ defmodule FretboardWeb.FretboardLiveTest do
       assert labels == ["A", "E", "A", "D", "G"]
     end
   end
+
+  describe "key suggestions section" do
+    test "with 2+ compatible chords, suggestions section appears", %{conn: conn} do
+      # C major + A minor → both diatonic in C major / A minor
+      {:ok, _view, html} = live(conn, "/?chords=Cmaj,Amin")
+
+      assert html =~ "Tonalidades compatibles"
+      assert html =~ "key-suggestions-wrapper"
+    end
+
+    test "with 0 chords, suggestions section does not appear", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/")
+
+      refute html =~ "Tonalidades compatibles"
+      refute html =~ "key-suggestions-wrapper"
+    end
+
+    test "with 1 chord, suggestions section does not appear", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/?chords=Cmaj")
+
+      refute html =~ "Tonalidades compatibles"
+      refute html =~ "key-suggestions-wrapper"
+    end
+
+    test "with 2+ incompatible chords, shows 'No se encontraron' message", %{conn: conn} do
+      # C major (C-E-G) + F# major (F#-A#-C#) have no common diatonic key
+      # F# is URL-encoded as F%23 (# is a fragment delimiter in URLs)
+      {:ok, _view, html} = live(conn, "/?chords=Cmaj,F%23maj")
+
+      assert html =~ "Tonalidades compatibles"
+      assert html =~ "No se encontraron tonalidades compatibles con estos acordes."
+    end
+
+    test "suggestions section shows 'Ver tonalidad' buttons", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/?chords=Cmaj,Amin")
+
+      assert html =~ "Ver tonalidad"
+      assert html =~ "apply_suggested_key"
+    end
+
+    test "clicking 'Ver tonalidad' replaces chords with diatonic set", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/?chords=Cmaj,Amin")
+
+      # Click "Ver tonalidad" for C major → 7 diatonic triads
+      html = render_click(view, "apply_suggested_key", %{"tonic" => "C", "scale_type" => "major"})
+
+      # Major scale produces 7 diatonic triads
+      assert length(Regex.scan(~r/chord-chip\"/, html)) == 7
+    end
+
+    test "after applying a suggestion, suggestions recalculate (section still shows)", %{
+      conn: conn
+    } do
+      {:ok, view, _html} = live(conn, "/?chords=Cmaj,Amin")
+
+      html = render_click(view, "apply_suggested_key", %{"tonic" => "C", "scale_type" => "major"})
+
+      # After applying C major, we have 7 diatonic chords → suggestions recalculate
+      assert html =~ "Tonalidades compatibles"
+    end
+  end
 end

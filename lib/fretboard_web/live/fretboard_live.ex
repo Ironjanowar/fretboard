@@ -36,6 +36,10 @@ defmodule FretboardWeb.FretboardLive do
     "#7986CB"
   ]
 
+  # The 7 diatonic modes that share the same note set (e.g. C major = A minor = D dorian …).
+  # Used by `group_key_suggestions/1` to collapse relative modes in the UI.
+  @modal_modes MapSet.new([:major, :minor, :dorian, :phrygian, :lydian, :mixolydian, :locrian])
+
   @impl true
   def mount(params, _session, socket) do
     {instrument, tuning, active_chords, highlighted_chord} = Music.decode_params(params)
@@ -62,7 +66,8 @@ defmodule FretboardWeb.FretboardLive do
        key_chord_mode: :triad,
        show_progression_modal: false,
        progression_id: :pop_i_v_vi_iv,
-       progression_tonic: "C"
+       progression_tonic: "C",
+       key_suggestions: []
      )}
   end
 
@@ -90,6 +95,9 @@ defmodule FretboardWeb.FretboardLive do
     fretboard = Music.fretboard_data(tuning, active_chords)
     string_count = Music.instrument_strings(instrument)
 
+    key_suggestions =
+      if length(active_chords) >= 2, do: Music.suggest_keys(active_chords), else: []
+
     {:noreply,
      assign(socket,
        instrument: instrument,
@@ -99,7 +107,8 @@ defmodule FretboardWeb.FretboardLive do
        fretboard: fretboard,
        svg: svg_params(string_count),
        modal_tuning: tuning,
-       modal_preset: detect_preset(tuning, instrument)
+       modal_preset: detect_preset(tuning, instrument),
+       key_suggestions: key_suggestions
      )}
   end
 
@@ -334,6 +343,15 @@ defmodule FretboardWeb.FretboardLive do
   end
 
   @impl true
+  def handle_event("apply_suggested_key", %{"tonic" => tonic, "scale_type" => scale_type}, socket) do
+    mode = socket.assigns[:key_chord_mode] || :triad
+    active_chords = Music.diatonic_chords(tonic, String.to_existing_atom(scale_type), mode)
+
+    {:noreply,
+     push_url_patch(socket, socket.assigns.instrument, socket.assigns.tuning, active_chords, nil)}
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <div class="main-container">
@@ -453,6 +471,76 @@ defmodule FretboardWeb.FretboardLive do
         <% end %>
       </div>
 
+      <%!-- Key Suggestions --%>
+      <div
+        :if={length(@active_chords) >= 2}
+        class="key-suggestions-wrapper"
+        id="key-suggestions"
+      >
+        <label class="section-label">Tonalidades compatibles</label>
+
+        <%= if @key_suggestions == [] do %>
+          <p class="text-muted">
+            No se encontraron tonalidades compatibles con estos acordes.
+          </p>
+        <% else %>
+          <%= for group <- group_key_suggestions(@key_suggestions) do %>
+            <%= if group.collapsed? do %>
+              <div class="key-suggestion-item">
+                <span class="key-suggestion-label">
+                  {Music.scale_label(hd(group.prominent).scale_type)} {hd(group.prominent).tonic}
+                </span>
+                <button
+                  type="button"
+                  phx-click="apply_suggested_key"
+                  phx-value-tonic={hd(group.prominent).tonic}
+                  phx-value-scale_type={hd(group.prominent).scale_type}
+                  class="btn btn-secondary"
+                >
+                  Ver tonalidad
+                </button>
+                <span class="key-suggestion-modes">
+                  {length(group.others)} modos adicionales
+                </span>
+              </div>
+              <%= if tl(group.prominent) != [] do %>
+                <%= for s <- tl(group.prominent) do %>
+                  <div class="key-suggestion-item">
+                    <span class="key-suggestion-label">
+                      {Music.scale_label(s.scale_type)} {s.tonic}
+                    </span>
+                    <button
+                      type="button"
+                      phx-click="apply_suggested_key"
+                      phx-value-tonic={s.tonic}
+                      phx-value-scale_type={s.scale_type}
+                      class="btn btn-secondary"
+                    >
+                      Ver tonalidad
+                    </button>
+                  </div>
+                <% end %>
+              <% end %>
+            <% else %>
+              <div class="key-suggestion-item">
+                <span class="key-suggestion-label">
+                  {Music.scale_label(group.item.scale_type)} {group.item.tonic}
+                </span>
+                <button
+                  type="button"
+                  phx-click="apply_suggested_key"
+                  phx-value-tonic={group.item.tonic}
+                  phx-value-scale_type={group.item.scale_type}
+                  class="btn btn-secondary"
+                >
+                  Ver tonalidad
+                </button>
+              </div>
+            <% end %>
+          <% end %>
+        <% end %>
+      </div>
+
       <%!-- Tuning Modal --%>
       <.tuning_modal
         show={@show_tuning_modal}
@@ -500,5 +588,82 @@ defmodule FretboardWeb.FretboardLive do
     query = URI.encode_query(params)
     path = if query == "", do: "/", else: "/?#{query}"
     push_patch(socket, to: path)
+  end
+
+  @doc """
+  Groups flat key suggestions into display rows for the UI.
+
+  Relative modes (the 7 diatonic modes that share the same note set) are
+  collapsed: the major and relative minor are shown prominently while the
+  remaining 5 modes are summarized as "N modos adicionales". Non-modal
+  scales (pentatonic, blues, harmonic_minor, …) are shown individually.
+
+  Only suggestions at the maximum score are grouped; when no suggestion
+  reaches a perfect score the top 3 are shown individually without grouping.
+  """
+  @spec group_key_suggestions([map()]) :: [map()]
+  def group_key_suggestions([]), do: []
+
+  def group_key_suggestions(suggestions) do
+    max_score = hd(suggestions).score
+    top = Enum.filter(suggestions, &(&1.score == max_score))
+    rest = Enum.filter(suggestions, &(&1.score < max_score))
+
+    if max_score == hd(suggestions).total do
+      grouped = group_modal_modes(top)
+      non_modal = Enum.filter(top, &(not MapSet.member?(@modal_modes, &1.scale_type)))
+      grouped_rows = Enum.map(grouped, &build_grouped_row/1)
+      non_modal_rows = Enum.map(non_modal, &build_single_row/1)
+      grouped_rows ++ non_modal_rows ++ single_rows(rest)
+    else
+      single_rows(Enum.take(suggestions, 3))
+    end
+  end
+
+  defp single_rows(suggestions) do
+    Enum.map(suggestions, &build_single_row/1)
+  end
+
+  defp build_single_row(s) do
+    %{collapsed?: false, item: s}
+  end
+
+  defp build_grouped_row(group) do
+    %{collapsed?: true, prominent: group.prominent, others: group.others}
+  end
+
+  # Groups suggestions at the same score whose scale notes form the same set.
+  # Returns a list of `%{prominent: [...], others: [...]}`. `prominent` holds
+  # the :major and :minor entries (in that priority order); `others` holds the
+  # remaining 5 modal modes. Non-modal scales are left ungrouped by this pass.
+  defp group_modal_modes(top) do
+    # Partition into modal (diatonic) and non-modal scales.
+    {modal, _non_modal} = Enum.split_with(top, &MapSet.member?(@modal_modes, &1.scale_type))
+
+    # Group modal modes by their note set.
+    groups =
+      Enum.group_by(modal, fn s ->
+        MapSet.new(Music.scale_notes(s.tonic, s.scale_type))
+      end)
+
+    # Only note-sets that contain all 7 diatonic modes get collapsed.
+    groups
+    |> Enum.map(fn {_notes, members} -> members end)
+    |> Enum.filter(fn members -> length(members) == 7 end)
+    |> Enum.map(&extract_prominent/1)
+  end
+
+  # Splits a group of 7 relative modes into prominent [:major, :minor] and the
+  # remaining 5 modes. Falls back to showing only the available prominent
+  # entries and treats the rest as "others".
+  defp extract_prominent(members) do
+    major = Enum.find(members, &(&1.scale_type == :major))
+    minor = Enum.find(members, &(&1.scale_type == :minor))
+    prominent = Enum.reject([major, minor], &is_nil/1)
+
+    prominent_types = MapSet.new(prominent, & &1.scale_type)
+    others = Enum.reject(members, &MapSet.member?(prominent_types, &1.scale_type))
+
+    %{prominent: prominent, others: others}
   end
 end

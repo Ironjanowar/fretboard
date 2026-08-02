@@ -6,6 +6,7 @@ defmodule Fretboard.Music.Scale do
   the notes and diatonic chords for a given tonic and scale type.
   """
 
+  alias Fretboard.Music.Chord
   alias Fretboard.Music.Note
 
   @scale_types [
@@ -233,4 +234,94 @@ defmodule Fretboard.Music.Scale do
   """
   @spec scale_label(atom()) :: String.t()
   def scale_label(scale_type), do: Map.fetch!(@labels, scale_type)
+
+  # Mapping from 7th-chord qualities to their triad base quality,
+  # used by `suggest_keys/1` to compare input 7th chords against
+  # the diatonic triad chords of a candidate key.
+  @seventh_to_triad %{
+    :maj7 => :major,
+    :"7" => :major,
+    :min7 => :minor,
+    :dim7 => :dim,
+    :m7b5 => :dim,
+    :min_maj7 => :minor,
+    :aug_maj7 => :aug,
+    :aug7 => :aug
+  }
+
+  @triad_qualities MapSet.new([:major, :minor, :dim, :aug, :sus2, :sus4])
+
+  @doc """
+  Suggests candidate keys (tonic + scale type) that contain all the notes
+  of every chord in `chords`, scored by how many chords match the key's
+  diatonic triads.
+
+  Each chord is a map with `:root` (e.g. `"C"`) and `:quality` (e.g.
+  `:major`, `:min7`). 7th-chord qualities are mapped to their triad base
+  via `@seventh_to_triad` before comparison against the diatonic triads.
+
+  Returns a list of maps sorted by score descending, then tonic ascending,
+  then scale_type ascending. Each map has:
+
+    * `:tonic`           — the tonic note name (e.g. `"C"`)
+    * `:scale_type`      — the scale type atom (e.g. `:major`)
+    * `:score`           — number of chords that match a diatonic triad
+    * `:total`           — number of input chords
+    * `:diatonic_chords` — the diatonic triads of the candidate key
+
+  ## Examples
+
+      iex> hd(Fretboard.Music.Scale.suggest_keys([%{root: "C", quality: :major}])).score
+      1
+  """
+  @spec suggest_keys([%{root: String.t(), quality: atom()}]) :: [map()]
+  def suggest_keys(chords) do
+    candidate_types = List.delete(@scale_types, :chromatic)
+    tonics = Note.chromatic_scale()
+
+    # Precompute each chord's note set once.
+    chord_note_sets =
+      Enum.map(chords, fn %{root: root, quality: quality} ->
+        MapSet.new(Chord.notes(root, quality))
+      end)
+
+    for tonic <- tonics,
+        scale_type <- candidate_types,
+        valid_candidate?(tonic, scale_type, chord_note_sets) do
+      build_result(tonic, scale_type, chords)
+    end
+    |> Enum.sort_by(fn r -> {-r.score, r.tonic, Atom.to_string(r.scale_type)} end)
+  end
+
+  defp valid_candidate?(tonic, scale_type, chord_note_sets) do
+    scale_set = MapSet.new(scale_notes(tonic, scale_type))
+    Enum.all?(chord_note_sets, &MapSet.subset?(&1, scale_set))
+  end
+
+  defp build_result(tonic, scale_type, chords) do
+    dc = diatonic_chords(tonic, scale_type, :triad)
+    dc_map = Map.new(dc, fn %{root: root, quality: quality} -> {root, quality} end)
+
+    score =
+      Enum.count(chords, fn %{root: root, quality: quality} ->
+        expected = triad_base_quality(quality)
+        Map.get(dc_map, root) == expected
+      end)
+
+    %{
+      tonic: tonic,
+      scale_type: scale_type,
+      score: score,
+      total: length(chords),
+      diatonic_chords: dc
+    }
+  end
+
+  defp triad_base_quality(quality) do
+    if MapSet.member?(@triad_qualities, quality) do
+      quality
+    else
+      Map.fetch!(@seventh_to_triad, quality)
+    end
+  end
 end

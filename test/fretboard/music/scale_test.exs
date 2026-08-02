@@ -2,6 +2,8 @@ defmodule Fretboard.Music.ScaleTest do
   use ExUnit.Case, async: true
 
   alias Fretboard.Music.Scale
+  alias Fretboard.Music.Chord
+  alias Fretboard.Music.Note
 
   describe "available_scale_types/0" do
     test "returns all 15 scale types" do
@@ -322,6 +324,139 @@ defmodule Fretboard.Music.ScaleTest do
         assert is_binary(label)
         assert label != ""
       end
+    end
+  end
+
+  describe "suggest_keys/1" do
+    # Helper: build a chord map from root + quality.
+    defp chord(root, quality), do: %{root: root, quality: quality}
+
+    # Helper: find a result by tonic + scale_type.
+    defp find_result(results, tonic, scale_type) do
+      Enum.find(results, &(&1.tonic == tonic and &1.scale_type == scale_type))
+    end
+
+    test "C-F-G major triads → top results have score 3/3 and C major is present" do
+      results = Scale.suggest_keys([chord("C", :major), chord("F", :major), chord("G", :major)])
+
+      # Top results should all be perfect 3/3.
+      top = Enum.take(results, 5)
+      assert Enum.all?(top, &(&1.score == 3 and &1.total == 3))
+
+      # C major key must be among the perfect-score results.
+      c_major = find_result(results, "C", :major)
+      assert c_major != nil
+      assert c_major.score == 3
+      assert c_major.total == 3
+
+      # The diatonic_chords for C major should match the known sequence.
+      dc = c_major.diatonic_chords
+      assert Enum.find(dc, &(&1.root == "C" and &1.quality == :major)) != nil
+      assert Enum.find(dc, &(&1.root == "F" and &1.quality == :major)) != nil
+      assert Enum.find(dc, &(&1.root == "G" and &1.quality == :major)) != nil
+    end
+
+    test "C major + A minor + F major + G major → C major and A minor both 4/4" do
+      results =
+        Scale.suggest_keys([
+          chord("C", :major),
+          chord("A", :minor),
+          chord("F", :major),
+          chord("G", :major)
+        ])
+
+      c_major = find_result(results, "C", :major)
+      a_minor = find_result(results, "A", :minor)
+
+      assert c_major != nil
+      assert c_major.score == 4
+      assert c_major.total == 4
+
+      assert a_minor != nil
+      assert a_minor.score == 4
+      assert a_minor.total == 4
+
+      # Top results should be 4/4.
+      top = Enum.take(results, 3)
+      assert Enum.all?(top, &(&1.score == 4 and &1.total == 4))
+    end
+
+    test "C maj7 + D min7 + G dominant 7 → C major with score 3/3 via 7th→triad matching" do
+      results =
+        Scale.suggest_keys([
+          chord("C", :maj7),
+          chord("D", :min7),
+          chord("G", :"7")
+        ])
+
+      c_major = find_result(results, "C", :major)
+      assert c_major != nil
+      assert c_major.score == 3
+      assert c_major.total == 3
+    end
+
+    test "C major + C# major → very few or no results (length <= 5)" do
+      results = Scale.suggest_keys([chord("C", :major), chord("C#", :major)])
+      assert length(results) <= 5
+    end
+
+    test "empty list → all 168 candidates with score 0" do
+      results = Scale.suggest_keys([])
+
+      assert length(results) == 168
+      assert Enum.all?(results, &(&1.score == 0 and &1.total == 0))
+    end
+
+    test "single chord (C major) → many results, all with score 1" do
+      results = Scale.suggest_keys([chord("C", :major)])
+
+      # All returned results must contain C major's notes (C, E, G).
+      assert length(results) > 0
+      assert Enum.all?(results, &(&1.score == 1 and &1.total == 1))
+    end
+
+    test "each result has correct structure with required keys" do
+      results = Scale.suggest_keys([chord("C", :major), chord("G", :major)])
+
+      assert length(results) > 0
+
+      for r <- results do
+        assert Map.has_key?(r, :tonic)
+        assert Map.has_key?(r, :scale_type)
+        assert Map.has_key?(r, :score)
+        assert Map.has_key?(r, :total)
+        assert Map.has_key?(r, :diatonic_chords)
+
+        assert is_binary(r.tonic)
+        assert is_atom(r.scale_type)
+        assert is_integer(r.score)
+        assert is_integer(r.total)
+        assert is_list(r.diatonic_chords)
+
+        # tonic must be one of the 12 chromatic notes.
+        assert r.tonic in Note.chromatic_scale()
+
+        # scale_type must not be :chromatic (excluded from candidates).
+        assert r.scale_type != :chromatic
+
+        # diatonic_chords entries must each have :root and :quality.
+        for dc <- r.diatonic_chords do
+          assert Map.has_key?(dc, :root)
+          assert Map.has_key?(dc, :quality)
+          assert is_binary(dc.root)
+          assert is_atom(dc.quality)
+        end
+      end
+    end
+
+    test "results are sorted by score descending (first score >= last score)" do
+      results = Scale.suggest_keys([chord("C", :major), chord("F", :major), chord("G", :major)])
+
+      scores = Enum.map(results, & &1.score)
+      assert hd(scores) >= List.last(scores)
+
+      # Full list must be non-increasing.
+      assert scores == Enum.sort(scores, :desc)
     end
   end
 end
