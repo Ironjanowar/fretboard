@@ -9,7 +9,11 @@ defmodule FretboardWeb.FretboardLive do
 
   use FretboardWeb, :live_view
 
+  import FretboardWeb.FretboardSVG, only: [fretboard_svg: 1]
+  import FretboardWeb.Modals
+
   alias Fretboard.Music
+  alias Fretboard.Music.Note
 
   @fret_count 24
   @marker_frets [3, 5, 7, 9, 12, 15, 17, 19, 21, 24]
@@ -21,8 +25,6 @@ defmodule FretboardWeb.FretboardLive do
   @fret_width 50
   @string_spacing 20
 
-  @chromatic_notes ~w(C C# D D# E F F# G G# A A# B)
-
   @chord_colors [
     "#4FC3F7",
     "#FF8A65",
@@ -33,8 +35,6 @@ defmodule FretboardWeb.FretboardLive do
     "#F06292",
     "#7986CB"
   ]
-
-  @overlap_color "#9E9E9E"
 
   @impl true
   def mount(params, _session, socket) do
@@ -52,7 +52,7 @@ defmodule FretboardWeb.FretboardLive do
        svg: svg_params(string_count),
        chord_form: %{"root" => "C", "quality" => "major"},
        chord_colors: @chord_colors,
-       chromatic_notes: @chromatic_notes,
+       chromatic_notes: Note.chromatic_scale(),
        show_tuning_modal: false,
        modal_tuning: tuning,
        modal_preset: detect_preset(tuning, instrument),
@@ -364,7 +364,7 @@ defmodule FretboardWeb.FretboardLive do
               name="chord[root]"
               class="form-select"
             >
-              <%= for note <- @chromatic_notes do %>
+              <%= for note <- Note.chromatic_scale() do %>
                 <option value={note} selected={@chord_form["root"] == note}>{note}</option>
               <% end %>
             </select>
@@ -394,159 +394,21 @@ defmodule FretboardWeb.FretboardLive do
       </div>
 
       <%!-- SVG Fretboard --%>
-      <div class="fretboard-wrapper" id="fretboard">
-        <svg
-          viewBox={"0 0 #{@svg.width} #{@svg.height}"}
-          class="fretboard-svg"
-          style="min-width: 900px;"
-        >
-          <%!-- Fretboard background --%>
-          <rect
-            x={@svg.left_margin}
-            y={@svg.top_margin}
-            width={@svg.fret_count * @svg.fret_width + @svg.fret_width}
-            height={(@svg.string_count - 1) * @svg.string_spacing}
-            fill="#3E2723"
-            rx="2"
-          />
-
-          <%!-- Nut (fret 0) --%>
-          <line
-            class="nut-line"
-            x1={@svg.left_margin}
-            y1={@svg.top_margin - 2}
-            x2={@svg.left_margin}
-            y2={@svg.top_margin + (@svg.string_count - 1) * @svg.string_spacing + 2}
-            stroke="#FAFAFA"
-            stroke-width="5"
-          />
-
-          <%!-- Fret lines --%>
-          <%= for fret <- 0..@svg.fret_count do %>
-            <line
-              class="fret-line"
-              x1={@svg.left_margin + fret * @svg.fret_width}
-              y1={@svg.top_margin}
-              x2={@svg.left_margin + fret * @svg.fret_width}
-              y2={@svg.top_margin + (@svg.string_count - 1) * @svg.string_spacing}
-              stroke="#9E9E9E"
-              stroke-width="1"
-            />
-          <% end %>
-
-          <%!-- Fret markers --%>
-          <%= for fret <- @svg.marker_frets do %>
-            <%= if MapSet.member?(@svg.double_marker_frets, fret) do %>
-              <circle
-                class="fret-marker"
-                cx={@svg.left_margin + (fret - 1) * @svg.fret_width + div(@svg.fret_width, 2)}
-                cy={@svg.top_margin + @svg.string_spacing * 1}
-                r="4"
-                fill="#BDBDBD"
-              />
-              <circle
-                class="fret-marker"
-                cx={@svg.left_margin + (fret - 1) * @svg.fret_width + div(@svg.fret_width, 2)}
-                cy={@svg.top_margin + @svg.string_spacing * 3}
-                r="4"
-                fill="#BDBDBD"
-              />
-            <% else %>
-              <circle
-                class="fret-marker"
-                cx={@svg.left_margin + (fret - 1) * @svg.fret_width + div(@svg.fret_width, 2)}
-                cy={@svg.top_margin + div((@svg.string_count - 1) * @svg.string_spacing, 2)}
-                r="4"
-                fill="#BDBDBD"
-              />
-            <% end %>
-          <% end %>
-
-          <%!-- Strings (reversed: high E at top, low E at bottom) --%>
-          <%= for s <- 0..(@svg.string_count - 1) do %>
-            <% _string_idx = @svg.string_count - 1 - s %>
-            <line
-              class="string-line"
-              x1={@svg.left_margin}
-              y1={@svg.top_margin + s * @svg.string_spacing}
-              x2={@svg.left_margin + (@svg.fret_count + 1) * @svg.fret_width}
-              y2={@svg.top_margin + s * @svg.string_spacing}
-              stroke="#E0E0E0"
-              stroke-width={1.5 + s * 0.3}
-            />
-          <% end %>
-
-          <%!-- Tuning labels (informational only, reversed: high E at top, low E at bottom) --%>
-          <%= for {note, string_idx} <- Enum.with_index(@tuning) do %>
-            <% visual_row = @svg.string_count - 1 - string_idx %>
-            <text
-              class="tuning-label"
-              x={@svg.left_margin - 15}
-              y={@svg.top_margin + visual_row * @svg.string_spacing + 5}
-              fill="#FAFAFA"
-              font-size="14"
-              font-weight="bold"
-              text-anchor="end"
-            >
-              {note}
-            </text>
-          <% end %>
-
-          <%!-- Fret numbers --%>
-          <%= for fret <- 1..@svg.fret_count do %>
-            <text
-              x={@svg.left_margin + (fret - 1) * @svg.fret_width + div(@svg.fret_width, 2)}
-              y={@svg.top_margin - 10}
-              fill="#9E9E9E"
-              font-size="10"
-              text-anchor="middle"
-            >
-              {fret}
-            </text>
-          <% end %>
-
-          <%!-- Note circles (only when chords are active, reversed string order) --%>
-          <%= if @active_chords != [] do %>
-            <%= for {string_data, string_idx} <- Enum.with_index(@fretboard) do %>
-              <% visual_row = @svg.string_count - 1 - string_idx %>
-              <%= for pos <- string_data do %>
-                <%= if pos.chords != [] do %>
-                  <g style="cursor: pointer;">
-                    <%= if length(pos.chords) > 1 do %>
-                      <title>{Enum.join(pos.chords, ", ")}</title>
-                    <% end %>
-                    <circle
-                      class="note-circle"
-                      cx={note_cx(pos.fret, @svg)}
-                      cy={@svg.top_margin + visual_row * @svg.string_spacing}
-                      r="8"
-                      fill={note_fill(pos.chords, @active_chords, @chord_colors, @highlighted_chord)}
-                    />
-                    <text
-                      x={note_cx(pos.fret, @svg)}
-                      y={@svg.top_margin + visual_row * @svg.string_spacing + 4}
-                      fill="#1a1a1a"
-                      font-size="9"
-                      font-weight="bold"
-                      text-anchor="middle"
-                      style="pointer-events: none;"
-                    >
-                      {pos.note}
-                    </text>
-                  </g>
-                <% end %>
-              <% end %>
-            <% end %>
-          <% end %>
-        </svg>
-      </div>
+      <.fretboard_svg
+        svg={@svg}
+        tuning={@tuning}
+        fretboard={@fretboard}
+        active_chords={@active_chords}
+        chord_colors={@chord_colors}
+        highlighted_chord={@highlighted_chord}
+      />
 
       <%!-- Active chords chips --%>
       <div class="chords-wrapper">
         <%= for {chord, i} <- Enum.with_index(@active_chords) do %>
           <div
             class={"chord-chip#{if @highlighted_chord == i, do: " chord-chip--highlighted", else: ""}"}
-            style={"background-color: #{Enum.at(@chord_colors, rem(i, length(@chord_colors)))}"}
+            style={"background-color: #{chord_color(i, @chord_colors)}"}
             phx-click="highlight_chord"
             phx-value-index={i}
           >
@@ -571,297 +433,32 @@ defmodule FretboardWeb.FretboardLive do
       </div>
 
       <%!-- Tuning Modal --%>
-      <%= if @show_tuning_modal do %>
-        <div
-          id="tuning-modal"
-          class="modal-overlay"
-        >
-          <div class="modal-backdrop" phx-click="close_tuning_modal"></div>
-          <div class="modal-content">
-            <h2 class="modal-title">Tuning</h2>
-
-            <%!-- Preset Dropdown --%>
-            <form phx-change="select_preset" class="form-group">
-              <label class="form-label">Preset</label>
-              <select
-                id={"preset-select-#{@modal_preset}"}
-                class="form-select-full"
-                name="preset"
-              >
-                <%= for name <- Music.instrument_preset_names(@instrument) do %>
-                  <option value={name} selected={@modal_preset == name}>{name}</option>
-                <% end %>
-                <option value="Custom" selected={@modal_preset == "Custom"}>Custom</option>
-              </select>
-            </form>
-
-            <%!-- Individual String Dropdowns (String 6 to String 1, top to bottom) --%>
-            <div
-              class="form-group-spaced"
-              id={"string-dropdowns-#{Enum.join(@modal_tuning, "")}"}
-              phx-update="replace"
-            >
-              <%= for string_num <- @svg.string_count..1//-1 do %>
-                <% string_idx = @svg.string_count - string_num %>
-                <% current_note = Enum.at(@modal_tuning, string_idx) %>
-                <form
-                  phx-change="change_string"
-                  class="string-row"
-                  id={"string-form-#{string_idx}"}
-                >
-                  <label class="string-label">String {string_num}</label>
-                  <input type="hidden" name="string" value={string_idx} />
-                  <select
-                    id={"string-select-#{string_idx}"}
-                    class="form-select-full string-select"
-                    name="note"
-                  >
-                    <%= for note <- @chromatic_notes do %>
-                      <option value={note} selected={note == current_note}>
-                        {note}
-                      </option>
-                    <% end %>
-                  </select>
-                </form>
-              <% end %>
-            </div>
-
-            <%!-- Buttons --%>
-            <div class="modal-buttons">
-              <button
-                type="button"
-                phx-click="close_tuning_modal"
-                class="btn btn-ghost"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                phx-click="apply_tuning"
-                class="btn btn-primary"
-              >
-                Apply
-              </button>
-            </div>
-          </div>
-        </div>
-      <% end %>
+      <.tuning_modal
+        show={@show_tuning_modal}
+        modal_preset={@modal_preset}
+        instrument={@instrument}
+        modal_tuning={@modal_tuning}
+        string_count={@svg.string_count}
+      />
 
       <%!-- Key Modal --%>
-      <%= if @show_key_modal do %>
-        <div
-          id="key-modal"
-          class="modal-overlay"
-        >
-          <div class="modal-backdrop" phx-click="close_key_modal"></div>
-          <div class="modal-content">
-            <h2 class="modal-title">Key</h2>
-
-            <form phx-change="update_key" id="key-form">
-              <div class="form-row">
-                <div class="form-col">
-                  <label class="form-label">Tonic</label>
-                  <select
-                    id={"key-tonic-select-#{@key_tonic}"}
-                    class="form-select-full"
-                    name="key[tonic]"
-                  >
-                    <%= for note <- @chromatic_notes do %>
-                      <option value={note} selected={@key_tonic == note}>{note}</option>
-                    <% end %>
-                  </select>
-                </div>
-                <div class="form-col">
-                  <label class="form-label">Scale</label>
-                  <select
-                    id={"key-scale-select-#{@key_scale_type}"}
-                    class="form-select-full"
-                    name="key[scale_type]"
-                  >
-                    <%= for {group, scale_types} <- Music.grouped_scale_types() do %>
-                      <optgroup label={group}>
-                        <%= for st <- scale_types do %>
-                          <option value={st} selected={@key_scale_type == st}>
-                            {Music.scale_label(st)}
-                          </option>
-                        <% end %>
-                      </optgroup>
-                    <% end %>
-                  </select>
-                </div>
-              </div>
-            </form>
-
-            <%!-- Preview Diatonic Chords --%>
-            <div class="form-group-spaced">
-              <label class="section-label">Diatonic Chords</label>
-              <div
-                class="key-preview-wrapper"
-                id={"key-preview-#{@key_tonic}-#{@key_scale_type}"}
-                phx-update="replace"
-              >
-                <%= for {chord, i} <- Enum.with_index(Music.diatonic_chords(@key_tonic, @key_scale_type)) do %>
-                  <span
-                    class="key-preview-chip"
-                    style={"background-color: #{Enum.at(@chord_colors, rem(i, length(@chord_colors)))}"}
-                  >
-                    {Music.chord_label(chord.root, chord.quality)}
-                  </span>
-                <% end %>
-              </div>
-            </div>
-
-            <%!-- Buttons --%>
-            <div class="modal-buttons">
-              <button
-                type="button"
-                phx-click="close_key_modal"
-                class="btn btn-ghost"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                phx-click="apply_key"
-                class="btn btn-primary"
-              >
-                Apply
-              </button>
-            </div>
-          </div>
-        </div>
-      <% end %>
+      <.key_modal
+        show={@show_key_modal}
+        key_tonic={@key_tonic}
+        key_scale_type={@key_scale_type}
+        chord_colors={@chord_colors}
+      />
 
       <%!-- Progression Modal --%>
-      <%= if @show_progression_modal do %>
-        <div
-          id="progression-modal"
-          class="modal-overlay"
-        >
-          <div class="modal-backdrop" phx-click="close_progression_modal"></div>
-          <div class="modal-content">
-            <h2 class="modal-title">Chord Progressions</h2>
-
-            <form phx-change="update_progression" id="progression-form">
-              <div class="form-row">
-                <div class="form-col">
-                  <label class="form-label">Progression</label>
-                  <select
-                    id="progression-select"
-                    class="form-select-full"
-                    name="progression[id]"
-                  >
-                    <%= for {category, progressions} <- Music.grouped_progressions() do %>
-                      <optgroup label={category}>
-                        <%= for prog <- progressions do %>
-                          <option value={prog.id} selected={@progression_id == prog.id}>
-                            {prog.name}
-                          </option>
-                        <% end %>
-                      </optgroup>
-                    <% end %>
-                  </select>
-                </div>
-                <div class="form-col">
-                  <label class="form-label">Tonic</label>
-                  <select
-                    id="progression-tonic-select"
-                    class="form-select-full"
-                    name="progression[tonic]"
-                  >
-                    <%= for note <- @chromatic_notes do %>
-                      <option value={note} selected={@progression_tonic == note}>{note}</option>
-                    <% end %>
-                  </select>
-                </div>
-              </div>
-            </form>
-
-            <%!-- Preview Chords --%>
-            <div class="form-group-spaced">
-              <label class="section-label">Chords</label>
-              <div
-                class="key-preview-wrapper"
-                id={"progression-preview-#{@progression_tonic}-#{@progression_id}"}
-                phx-update="replace"
-              >
-                <%= for {chord, i} <- Enum.with_index(Music.progression_chords(@progression_tonic, @progression_id)) do %>
-                  <span
-                    class="key-preview-chip"
-                    style={"background-color: #{Enum.at(@chord_colors, rem(i, length(@chord_colors)))}"}
-                  >
-                    {Music.chord_label(chord.root, chord.quality)}
-                  </span>
-                <% end %>
-              </div>
-            </div>
-
-            <%!-- Buttons --%>
-            <div class="modal-buttons">
-              <button
-                type="button"
-                phx-click="close_progression_modal"
-                class="btn btn-ghost"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                phx-click="apply_progression"
-                class="btn btn-primary"
-              >
-                Apply
-              </button>
-            </div>
-          </div>
-        </div>
-      <% end %>
+      <.progression_modal
+        show={@show_progression_modal}
+        progression_id={@progression_id}
+        progression_tonic={@progression_tonic}
+        chord_colors={@chord_colors}
+      />
     </div>
     """
   end
-
-  @doc """
-  Computes the SVG x-coordinate for a note at a given fret.
-  """
-  @spec note_cx(non_neg_integer(), map()) :: non_neg_integer()
-  def note_cx(0, svg), do: svg.left_margin
-
-  def note_cx(fret, svg),
-    do: svg.left_margin + (fret - 1) * svg.fret_width + div(svg.fret_width, 2)
-
-  @doc """
-  Determines the fill color for a note based on which chords it belongs to.
-
-  When a chord is highlighted, its notes render in that chord's color.
-  All other notes render in gray. When no chord is highlighted,
-  single chord notes get that chord's color, overlapping notes get neutral gray.
-  """
-  @spec note_fill([String.t()], [map()], [String.t()], non_neg_integer() | nil) :: String.t()
-  def note_fill(chords, active_chords, colors, highlighted_chord)
-      when is_integer(highlighted_chord) do
-    highlighted = Enum.at(active_chords, highlighted_chord)
-    highlighted_label = Music.chord_label(highlighted.root, highlighted.quality)
-
-    if highlighted_label in chords do
-      Enum.at(colors, rem(highlighted_chord, length(colors)))
-    else
-      @overlap_color
-    end
-  end
-
-  def note_fill(chords, _active_chords, _colors, nil) when length(chords) > 1,
-    do: @overlap_color
-
-  def note_fill([chord_label], active_chords, colors, nil) do
-    index =
-      Enum.find_index(active_chords, fn c ->
-        Music.chord_label(c.root, c.quality) == chord_label
-      end)
-
-    if index, do: Enum.at(colors, rem(index, length(colors))), else: @overlap_color
-  end
-
-  def note_fill(_, _, _, nil), do: @overlap_color
 
   @doc """
   Detects which preset matches a given tuning for a given instrument, or returns "Custom".

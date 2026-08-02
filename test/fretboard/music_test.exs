@@ -4,7 +4,7 @@ defmodule Fretboard.MusicTest do
   alias Fretboard.Music
 
   describe "standard_tuning/0" do
-    test "delegates to Tuning" do
+    test "returns standard guitar tuning" do
       assert Music.standard_tuning() == ["E", "A", "D", "G", "B", "E"]
     end
   end
@@ -265,7 +265,7 @@ defmodule Fretboard.MusicTest do
     test "delegates to Progression and returns non-empty list" do
       progressions = Music.available_progressions()
       assert is_list(progressions)
-      assert length(progressions) > 0
+      assert progressions != []
       assert :pop_i_v_vi_iv in progressions
     end
   end

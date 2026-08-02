@@ -3,16 +3,16 @@ defmodule Fretboard.Music do
   Public API facade for all music domain logic.
 
   This is the only module that `FretboardWeb` should call.
-  It delegates to `Note`, `Chord`, and `Tuning` internally.
+  It delegates to `Note`, `Chord`, `Instrument`, and `Scale` internally.
   """
 
-  alias Fretboard.Music.{Chord, Instrument, Note, Progression, Scale, Tuning, URLCodec}
+  alias Fretboard.Music.{Chord, Instrument, Note, Progression, Scale, URLCodec}
 
   @doc """
   Returns standard guitar tuning.
   """
   @spec standard_tuning() :: [String.t()]
-  def standard_tuning, do: Tuning.standard()
+  def standard_tuning, do: Instrument.instrument_standard_tuning(:guitar)
 
   @doc """
   Returns a list of named tuning presets (guitar, for backward compatibility).
