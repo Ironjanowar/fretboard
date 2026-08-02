@@ -364,27 +364,117 @@ body {
   width: 100%;
   max-width: 80rem;
   margin-top: 1rem;
-}
-
-.key-suggestion-item {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.25rem 0;
-}
-
-.key-suggestion-label {
-  font-weight: 600;
-  font-size: 0.875rem;
-}
-
-.key-suggestion-modes {
-  font-size: 0.75rem;
-  color: #6b7280;
-  margin-left: 0.5rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 .text-muted {
   color: #6b7280;
   font-size: 0.875rem;
+}
+
+/* --- Key Suggestion Cards --- */
+.key-card {
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 16rem;
+  flex: 1 1 16rem;
+}
+
+.key-card:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3), 0 4px 12px rgba(59, 130, 246, 0.15);
+  background-color: #24344d;
+}
+
+.key-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.key-card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.key-card-score {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #22c55e;
+  background-color: rgba(34, 197, 94, 0.12);
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+.key-card-score--partial {
+  color: #eab308;
+  background-color: rgba(234, 179, 8, 0.12);
+}
+
+.key-card-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.key-card-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.key-card-arrow {
+  font-size: 0.75rem;
+  color: #3b82f6;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* --- Collapsed Modes Row --- */
+.key-modes-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.key-modes-toggle {
+  background: none;
+  border: 1px solid #334155;
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.key-modes-toggle:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+.key-modes-expanded {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
 }
