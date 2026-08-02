@@ -1075,4 +1075,114 @@ defmodule FretboardWeb.FretboardLiveTest do
       assert html =~ "Tonalidades compatibles"
     end
   end
+
+  describe "apply_suggested_key chord mode detection" do
+    # `apply_suggested_key` ("Ver tonalidad" button) must detect whether the
+    # currently active chords are triads or 7ths and generate a diatonic set
+    # in the SAME mode — it must NOT fall back to the Key modal's
+    # key_chord_mode assign (which defaults to :triad).
+
+    test "triad chords produce triad diatonic chords (Cmaj,Fmaj,Gmaj → C major triads)", %{
+      conn: conn
+    } do
+      {:ok, view, _html} = live(conn, "/?chords=Cmaj,Fmaj,Gmaj")
+
+      html =
+        render_click(view, "apply_suggested_key", %{"tonic" => "C", "scale_type" => "major"})
+
+      # C major triads: Cmaj, Dmin, Emin, Fmaj, Gmaj, Amin, Bdim
+      assert length(Regex.scan(~r/chord-chip\"/, html)) == 7
+      assert html =~ "Cmaj"
+      assert html =~ "Bdim"
+      # 7th-only labels must NOT appear
+      refute html =~ "Cmaj7"
+      refute html =~ "Bm7b5"
+    end
+
+    test "seventh chords produce seventh diatonic chords (Cmaj7,Dmin7,G7 → C major 7ths)", %{
+      conn: conn
+    } do
+      {:ok, view, _html} = live(conn, "/?chords=Cmaj7,Dmin7,G7")
+
+      html =
+        render_click(view, "apply_suggested_key", %{"tonic" => "C", "scale_type" => "major"})
+
+      # C major 7ths: Cmaj7, Dmin7, Emin7, Fmaj7, G7, Amin7, Bm7b5
+      assert length(Regex.scan(~r/chord-chip\"/, html)) == 7
+      assert html =~ "Cmaj7"
+      assert html =~ "Dmin7"
+      assert html =~ "G7"
+      assert html =~ "Bm7b5"
+    end
+
+    test "mixed triads and 7ths produce seventh diatonic chords (Cmaj,Fmaj,G7 → C major 7ths)",
+         %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/?chords=Cmaj,Fmaj,G7")
+
+      html =
+        render_click(view, "apply_suggested_key", %{"tonic" => "C", "scale_type" => "major"})
+
+      # A single 7th chord among the actives triggers seventh mode.
+      assert html =~ "Cmaj7"
+      assert html =~ "G7"
+      refute html =~ "Cmaj\""
+      refute html =~ "Bdim\""
+    end
+
+    test "only triads produce triad diatonic chords (Cmaj,Amin → C major triads)", %{
+      conn: conn
+    } do
+      {:ok, view, _html} = live(conn, "/?chords=Cmaj,Amin")
+
+      html =
+        render_click(view, "apply_suggested_key", %{"tonic" => "C", "scale_type" => "major"})
+
+      assert html =~ "Cmaj"
+      assert html =~ "Amin"
+      refute html =~ "Cmaj7"
+      refute html =~ "Amin7"
+    end
+
+    test "each 7th quality triggers seventh mode", %{conn: conn} do
+      # Dmin7, Bm7b5, Bdim7 each carry a distinct 7th quality and must each
+      # push apply_suggested_key into seventh mode regardless of the Key
+      # modal's default triad mode.
+      seventh_quality_chords = ["Dmin7", "Bm7b5", "Bdim7"]
+
+      for label <- seventh_quality_chords do
+        {:ok, view, _html} = live(conn, "/?chords=Cmaj,#{label}")
+
+        html =
+          render_click(view, "apply_suggested_key", %{"tonic" => "C", "scale_type" => "major"})
+
+        assert html =~ "Cmaj7",
+               "expected seventh mode for active chord #{label}, but Cmaj7 was absent"
+      end
+    end
+
+    test "original bug scenario: A harmonic minor 7ths re-apply stays in seventh mode", %{
+      conn: conn
+    } do
+      # Mount with the full A harmonic_minor 7th-chord set. Before the fix,
+      # apply_suggested_key used key_chord_mode (:triad default) and
+      # produced TRIADS (Amin, Bdim, …) instead of 7ths (AmMaj7, Bdim7, …).
+      {:ok, view, _html} =
+        live(conn, "/?chords=AmMaj7,Bdim7,CaugMaj7,Dmin7,E7,Fmaj7,G%23dim7")
+
+      html =
+        render_click(view, "apply_suggested_key", %{
+          "tonic" => "A",
+          "scale_type" => "harmonic_minor"
+        })
+
+      # The regenerated A harmonic_minor 7th set must contain 7th chords…
+      assert html =~ "AmMaj7"
+      assert html =~ "Bdim7"
+      assert html =~ "E7"
+      assert html =~ "Fmaj7"
+      # …and must NOT degrade to triads.
+      refute html =~ "Amin\""
+      refute html =~ "Bdim\""
+    end
+  end
 end

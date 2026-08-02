@@ -18,7 +18,10 @@ defmodule Fretboard.Music.URLCodec do
     "maj7" => :maj7,
     "min7" => :min7,
     "dim7" => :dim7,
-    "m7b5" => :m7b5
+    "m7b5" => :m7b5,
+    "mMaj7" => :min_maj7,
+    "augMaj7" => :aug_maj7,
+    "aug7" => :aug7
   }
 
   @valid_notes MapSet.new(Note.chromatic_scale())

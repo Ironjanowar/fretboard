@@ -346,11 +346,22 @@ defmodule FretboardWeb.FretboardLive do
 
   @impl true
   def handle_event("apply_suggested_key", %{"tonic" => tonic, "scale_type" => scale_type}, socket) do
-    mode = socket.assigns[:key_chord_mode] || :triad
+    mode = infer_chord_mode(socket.assigns.active_chords)
     active_chords = Music.diatonic_chords(tonic, String.to_existing_atom(scale_type), mode)
 
     {:noreply,
      push_url_patch(socket, socket.assigns.instrument, socket.assigns.tuning, active_chords, nil)}
+  end
+
+  defp infer_chord_mode(active_chords) do
+    seventh_qualities =
+      MapSet.new([:"7", :maj7, :min7, :dim7, :m7b5, :min_maj7, :aug_maj7, :aug7])
+
+    if Enum.any?(active_chords, &MapSet.member?(seventh_qualities, &1.quality)) do
+      :seventh
+    else
+      :triad
+    end
   end
 
   @impl true
