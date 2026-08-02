@@ -14,6 +14,7 @@ defmodule FretboardWeb.FretboardLive do
 
   alias Fretboard.Music
   alias Fretboard.Music.Note
+  alias Phoenix.LiveView.AsyncResult
 
   @fret_count 24
   @marker_frets [3, 5, 7, 9, 12, 15, 17, 19, 21, 24]
@@ -68,7 +69,7 @@ defmodule FretboardWeb.FretboardLive do
        show_progression_modal: false,
        progression_id: :pop_i_v_vi_iv,
        progression_tonic: "C",
-       key_suggestions: []
+       key_suggestions: AsyncResult.loading()
      )}
   end
 
@@ -96,11 +97,11 @@ defmodule FretboardWeb.FretboardLive do
     fretboard = Music.fretboard_data(tuning, active_chords)
     string_count = Music.instrument_strings(instrument)
 
-    key_suggestions =
-      if length(active_chords) >= 2, do: Music.suggest_keys(active_chords), else: []
+    chords = active_chords
 
     {:noreply,
-     assign(socket,
+     socket
+     |> assign(
        instrument: instrument,
        tuning: tuning,
        active_chords: active_chords,
@@ -109,9 +110,15 @@ defmodule FretboardWeb.FretboardLive do
        svg: svg_params(string_count),
        modal_tuning: tuning,
        modal_preset: detect_preset(tuning, instrument),
-       key_suggestions: key_suggestions,
        show_key_modes: false
-     )}
+     )
+     |> assign_async(:key_suggestions, fn ->
+       if length(chords) >= 2 do
+         {:ok, %{key_suggestions: Music.suggest_keys(chords)}}
+       else
+         {:ok, %{key_suggestions: []}}
+       end
+     end)}
   end
 
   @impl true
@@ -490,36 +497,120 @@ defmodule FretboardWeb.FretboardLive do
       </div>
 
       <%!-- Key Suggestions --%>
-      <div
-        :if={length(@active_chords) >= 2}
-        class="key-suggestions-wrapper"
-        id="key-suggestions"
-      >
-        <label class="section-label" style="width:100%">Tonalidades compatibles</label>
+      <.async_result :let={key_suggestions} assign={@key_suggestions}>
+        <:loading>
+          <div :if={length(@active_chords) >= 2} class="key-suggestions-wrapper" id="key-suggestions">
+            <label class="section-label" style="width:100%">Tonalidades compatibles</label>
+            <p class="key-suggestions-loading">Calculando...</p>
+          </div>
+        </:loading>
+        <:failed :let={_failure}>
+          <div :if={length(@active_chords) >= 2} class="key-suggestions-wrapper" id="key-suggestions">
+            <label class="section-label" style="width:100%">Tonalidades compatibles</label>
+            <p class="text-muted">Error al calcular tonalidades.</p>
+          </div>
+        </:failed>
+        <div
+          :if={length(@active_chords) >= 2}
+          class="key-suggestions-wrapper"
+          id="key-suggestions"
+        >
+          <label class="section-label" style="width:100%">Tonalidades compatibles</label>
 
-        <%= if @key_suggestions == [] do %>
-          <p class="text-muted">
-            No se encontraron tonalidades compatibles con estos acordes.
-          </p>
-        <% else %>
-          <%= for group <- group_key_suggestions(@key_suggestions) do %>
-            <%= if group.collapsed? do %>
-              <%!-- Grouped modal modes: show prominent as cards, others as expandable --%>
-              <%= for s <- group.prominent do %>
+          <%= if key_suggestions == [] do %>
+            <p class="text-muted">
+              No se encontraron tonalidades compatibles con estos acordes.
+            </p>
+          <% else %>
+            <%= for group <- group_key_suggestions(key_suggestions) do %>
+              <%= if group.collapsed? do %>
+                <%!-- Grouped modal modes: show prominent as cards, others as expandable --%>
+                <%= for s <- group.prominent do %>
+                  <div
+                    class="key-card"
+                    phx-click="apply_suggested_key"
+                    phx-value-tonic={s.tonic}
+                    phx-value-scale_type={s.scale_type}
+                  >
+                    <div class="key-card-header">
+                      <span class="key-card-title">
+                        {Music.scale_label(s.scale_type)} {s.tonic}
+                      </span>
+                      <span class="key-card-score">{s.score}/{s.total}</span>
+                    </div>
+                    <div class="key-card-chips">
+                      <%= for {dc, i} <- Enum.with_index(s.diatonic_chords) do %>
+                        <span
+                          class="key-card-chip"
+                          style={chord_color(i, @chord_colors) |> then(&"background-color: #{&1};")}
+                        >
+                          {Music.chord_label(dc.root, dc.quality)}
+                        </span>
+                      <% end %>
+                    </div>
+                    <div class="key-card-arrow">Ver tonalidad →</div>
+                  </div>
+                <% end %>
+                <%!-- Collapsed modes toggle --%>
+                <div class="key-modes-row" style="width:100%">
+                  <button
+                    type="button"
+                    class="key-modes-toggle"
+                    phx-click="toggle_key_modes"
+                  >
+                    ▸ {length(group.others)} modos adicionales
+                  </button>
+                </div>
+                <%= if @show_key_modes do %>
+                  <div class="key-modes-expanded" style="width:100%">
+                    <%= for s <- group.others do %>
+                      <div
+                        class="key-card"
+                        phx-click="apply_suggested_key"
+                        phx-value-tonic={s.tonic}
+                        phx-value-scale_type={s.scale_type}
+                      >
+                        <div class="key-card-header">
+                          <span class="key-card-title">
+                            {Music.scale_label(s.scale_type)} {s.tonic}
+                          </span>
+                          <span class="key-card-score">{s.score}/{s.total}</span>
+                        </div>
+                        <div class="key-card-chips">
+                          <%= for {dc, i} <- Enum.with_index(s.diatonic_chords) do %>
+                            <span
+                              class="key-card-chip"
+                              style={
+                                chord_color(i, @chord_colors) |> then(&"background-color: #{&1};")
+                              }
+                            >
+                              {Music.chord_label(dc.root, dc.quality)}
+                            </span>
+                          <% end %>
+                        </div>
+                        <div class="key-card-arrow">Ver tonalidad →</div>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+              <% else %>
+                <%!-- Single (non-modal) suggestion as card --%>
                 <div
                   class="key-card"
                   phx-click="apply_suggested_key"
-                  phx-value-tonic={s.tonic}
-                  phx-value-scale_type={s.scale_type}
+                  phx-value-tonic={group.item.tonic}
+                  phx-value-scale_type={group.item.scale_type}
                 >
                   <div class="key-card-header">
                     <span class="key-card-title">
-                      {Music.scale_label(s.scale_type)} {s.tonic}
+                      {Music.scale_label(group.item.scale_type)} {group.item.tonic}
                     </span>
-                    <span class="key-card-score">{s.score}/{s.total}</span>
+                    <span class={"key-card-score#{if group.item.score == group.item.total, do: "", else: " key-card-score--partial"}"}>
+                      {group.item.score}/{group.item.total}
+                    </span>
                   </div>
                   <div class="key-card-chips">
-                    <%= for {dc, i} <- Enum.with_index(s.diatonic_chords) do %>
+                    <%= for {dc, i} <- Enum.with_index(group.item.diatonic_chords) do %>
                       <span
                         class="key-card-chip"
                         style={chord_color(i, @chord_colors) |> then(&"background-color: #{&1};")}
@@ -531,78 +622,10 @@ defmodule FretboardWeb.FretboardLive do
                   <div class="key-card-arrow">Ver tonalidad →</div>
                 </div>
               <% end %>
-              <%!-- Collapsed modes toggle --%>
-              <div class="key-modes-row" style="width:100%">
-                <button
-                  type="button"
-                  class="key-modes-toggle"
-                  phx-click="toggle_key_modes"
-                >
-                  ▸ {length(group.others)} modos adicionales
-                </button>
-              </div>
-              <%= if @show_key_modes do %>
-                <div class="key-modes-expanded" style="width:100%">
-                  <%= for s <- group.others do %>
-                    <div
-                      class="key-card"
-                      phx-click="apply_suggested_key"
-                      phx-value-tonic={s.tonic}
-                      phx-value-scale_type={s.scale_type}
-                    >
-                      <div class="key-card-header">
-                        <span class="key-card-title">
-                          {Music.scale_label(s.scale_type)} {s.tonic}
-                        </span>
-                        <span class="key-card-score">{s.score}/{s.total}</span>
-                      </div>
-                      <div class="key-card-chips">
-                        <%= for {dc, i} <- Enum.with_index(s.diatonic_chords) do %>
-                          <span
-                            class="key-card-chip"
-                            style={chord_color(i, @chord_colors) |> then(&"background-color: #{&1};")}
-                          >
-                            {Music.chord_label(dc.root, dc.quality)}
-                          </span>
-                        <% end %>
-                      </div>
-                      <div class="key-card-arrow">Ver tonalidad →</div>
-                    </div>
-                  <% end %>
-                </div>
-              <% end %>
-            <% else %>
-              <%!-- Single (non-modal) suggestion as card --%>
-              <div
-                class="key-card"
-                phx-click="apply_suggested_key"
-                phx-value-tonic={group.item.tonic}
-                phx-value-scale_type={group.item.scale_type}
-              >
-                <div class="key-card-header">
-                  <span class="key-card-title">
-                    {Music.scale_label(group.item.scale_type)} {group.item.tonic}
-                  </span>
-                  <span class={"key-card-score#{if group.item.score == group.item.total, do: "", else: " key-card-score--partial"}"}>
-                    {group.item.score}/{group.item.total}
-                  </span>
-                </div>
-                <div class="key-card-chips">
-                  <%= for {dc, i} <- Enum.with_index(group.item.diatonic_chords) do %>
-                    <span
-                      class="key-card-chip"
-                      style={chord_color(i, @chord_colors) |> then(&"background-color: #{&1};")}
-                    >
-                      {Music.chord_label(dc.root, dc.quality)}
-                    </span>
-                  <% end %>
-                </div>
-                <div class="key-card-arrow">Ver tonalidad →</div>
-              </div>
             <% end %>
           <% end %>
-        <% end %>
-      </div>
+        </div>
+      </.async_result>
 
       <%!-- Tuning Modal --%>
       <.tuning_modal

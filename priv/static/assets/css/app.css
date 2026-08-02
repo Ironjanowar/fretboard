@@ -374,6 +374,12 @@ body {
   font-size: 0.875rem;
 }
 
+.key-suggestions-loading {
+  color: #6b7280;
+  font-size: 0.875rem;
+  padding: 0.5rem 0;
+}
+
 /* --- Key Suggestion Cards --- */
 .key-card {
   background-color: #1e293b;

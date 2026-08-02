@@ -1041,14 +1041,16 @@ defmodule FretboardWeb.FretboardLiveTest do
     test "with 2+ incompatible chords, shows 'No se encontraron' message", %{conn: conn} do
       # C major (C-E-G) + F# major (F#-A#-C#) have no common diatonic key
       # F# is URL-encoded as F%23 (# is a fragment delimiter in URLs)
-      {:ok, _view, html} = live(conn, "/?chords=Cmaj,F%23maj")
+      {:ok, view, _html} = live(conn, "/?chords=Cmaj,F%23maj")
+      html = render_async(view)
 
       assert html =~ "Tonalidades compatibles"
       assert html =~ "No se encontraron tonalidades compatibles con estos acordes."
     end
 
     test "suggestions section shows 'Ver tonalidad' buttons", %{conn: conn} do
-      {:ok, _view, html} = live(conn, "/?chords=Cmaj,Amin")
+      {:ok, view, _html} = live(conn, "/?chords=Cmaj,Amin")
+      html = render_async(view)
 
       assert html =~ "Ver tonalidad"
       assert html =~ "apply_suggested_key"
