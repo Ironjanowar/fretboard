@@ -10,9 +10,9 @@ defmodule Fretboard.MusicTest do
   end
 
   describe "available_qualities/0" do
-    test "delegates to Chord and returns all 11 qualities" do
+    test "delegates to Chord and returns all 14 qualities" do
       qualities = Music.available_qualities()
-      assert length(qualities) == 11
+      assert length(qualities) == 14
       assert :major in qualities
       assert :"7" in qualities
     end

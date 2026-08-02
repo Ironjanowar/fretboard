@@ -18,7 +18,10 @@ defmodule Fretboard.Music.ChordTest do
       assert :min7 in qualities
       assert :dim7 in qualities
       assert :m7b5 in qualities
-      assert length(qualities) == 11
+      assert :min_maj7 in qualities
+      assert :aug_maj7 in qualities
+      assert :aug7 in qualities
+      assert length(qualities) == 14
     end
   end
 
@@ -65,6 +68,18 @@ defmodule Fretboard.Music.ChordTest do
 
     test "returns m7b5 formula" do
       assert Chord.formula(:m7b5) == [0, 3, 6, 10]
+    end
+
+    test "returns min_maj7 formula" do
+      assert Chord.formula(:min_maj7) == [0, 3, 7, 11]
+    end
+
+    test "returns aug_maj7 formula" do
+      assert Chord.formula(:aug_maj7) == [0, 4, 8, 11]
+    end
+
+    test "returns aug7 formula" do
+      assert Chord.formula(:aug7) == [0, 4, 8, 10]
     end
   end
 
@@ -120,6 +135,18 @@ defmodule Fretboard.Music.ChordTest do
     test "returns B m7b5 notes" do
       assert Chord.notes("B", :m7b5) == ["B", "D", "F", "A"]
     end
+
+    test "returns C min_maj7 notes" do
+      assert Chord.notes("C", :min_maj7) == ["C", "D#", "G", "B"]
+    end
+
+    test "returns C aug_maj7 notes" do
+      assert Chord.notes("C", :aug_maj7) == ["C", "E", "G#", "B"]
+    end
+
+    test "returns C aug7 notes" do
+      assert Chord.notes("C", :aug7) == ["C", "E", "G#", "A#"]
+    end
   end
 
   describe "label/1" do
@@ -166,6 +193,18 @@ defmodule Fretboard.Music.ChordTest do
     test "returns short label for m7b5" do
       assert Chord.label(:m7b5) == "m7b5"
     end
+
+    test "returns short label for min_maj7" do
+      assert Chord.label(:min_maj7) == "mMaj7"
+    end
+
+    test "returns short label for aug_maj7" do
+      assert Chord.label(:aug_maj7) == "augMaj7"
+    end
+
+    test "returns short label for aug7" do
+      assert Chord.label(:aug7) == "aug7"
+    end
   end
 
   describe "chord_label/2" do
@@ -187,6 +226,18 @@ defmodule Fretboard.Music.ChordTest do
 
     test "formats F# sus2 as F#sus2" do
       assert Chord.chord_label("F#", :sus2) == "F#sus2"
+    end
+
+    test "formats C min_maj7 as CmMaj7" do
+      assert Chord.chord_label("C", :min_maj7) == "CmMaj7"
+    end
+
+    test "formats C aug_maj7 as CaugMaj7" do
+      assert Chord.chord_label("C", :aug_maj7) == "CaugMaj7"
+    end
+
+    test "formats C aug7 as Caug7" do
+      assert Chord.chord_label("C", :aug7) == "Caug7"
     end
   end
 
@@ -269,7 +320,7 @@ defmodule Fretboard.Music.ChordTest do
 
       assert [{"Triads", triads}, {"Sevenths", sevenths}] = groups
       assert triads == [:major, :minor, :dim, :aug, :sus2, :sus4]
-      assert sevenths == [:"7", :maj7, :min7, :dim7, :m7b5]
+      assert sevenths == [:"7", :maj7, :min7, :dim7, :m7b5, :min_maj7, :aug_maj7, :aug7]
     end
   end
 end

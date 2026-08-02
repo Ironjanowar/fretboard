@@ -435,6 +435,98 @@ defmodule FretboardWeb.FretboardLiveTest do
     end
   end
 
+  describe "key modal chord mode" do
+    test "modal shows a chord mode select with Triads and 7ths options", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      html = view |> element("[phx-click=open_key_modal]") |> render_click()
+
+      assert html =~ "name=\"key[chord_mode]\""
+      assert html =~ "Triads"
+      assert html =~ "7ths"
+    end
+
+    test "default chord mode is triad (Triads option is selected)", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      html = view |> element("[phx-click=open_key_modal]") |> render_click()
+
+      # The Triads option should be selected by default
+      assert html =~ ~s(value="triad" selected)
+      refute html =~ ~s(value="seventh" selected)
+    end
+
+    test "default mode produces triad diatonic chords (backward compat)", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      view |> element("[phx-click=open_key_modal]") |> render_click()
+
+      html = render_click(view, "apply_key", %{})
+
+      # C major triads: Cmaj, Dmin, Emin, Fmaj, Gmaj, Amin, Bdim
+      assert length(Regex.scan(~r/chord-chip\"/, html)) == 7
+      assert html =~ "Cmaj"
+      assert html =~ "Bdim"
+      # 7th-only labels should NOT appear
+      refute html =~ "Cmaj7"
+      refute html =~ "Dmin7"
+    end
+
+    test "selecting 7ths mode updates the preview to 7th diatonic chords", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      view |> element("[phx-click=open_key_modal]") |> render_click()
+
+      html =
+        render_change(view, "update_key", %{
+          "key" => %{"tonic" => "C", "scale_type" => "major", "chord_mode" => "seventh"}
+        })
+
+      # Preview should show C major 7th diatonic chords
+      assert html =~ "Cmaj7"
+      assert html =~ "Dmin7"
+      assert html =~ "G7"
+      assert html =~ "Bm7b5"
+    end
+
+    test "applying with 7ths mode generates 7th diatonic chords as active chords", %{
+      conn: conn
+    } do
+      {:ok, view, _html} = live(conn, "/")
+      view |> element("[phx-click=open_key_modal]") |> render_click()
+
+      # Switch to 7ths mode
+      render_change(view, "update_key", %{
+        "key" => %{"tonic" => "C", "scale_type" => "major", "chord_mode" => "seventh"}
+      })
+
+      html = render_click(view, "apply_key", %{})
+
+      # 7th diatonic chords of C major should be active
+      assert length(Regex.scan(~r/chord-chip\"/, html)) == 7
+      assert html =~ "Cmaj7"
+      assert html =~ "Dmin7"
+      assert html =~ "Emin7"
+      assert html =~ "Fmaj7"
+      assert html =~ "G7"
+      assert html =~ "Amin7"
+      assert html =~ "Bm7b5"
+      # Modal should be closed
+      refute html =~ "key-modal"
+    end
+
+    test "update_key without chord_mode param defaults to triad", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+      view |> element("[phx-click=open_key_modal]") |> render_click()
+
+      # Send update_key without chord_mode (simulates older form / backward compat)
+      html =
+        render_change(view, "update_key", %{
+          "key" => %{"tonic" => "C", "scale_type" => "major"}
+        })
+
+      # Should still render triad chords, not 7ths
+      assert html =~ "Cmaj"
+      refute html =~ "Cmaj7"
+    end
+  end
+
   describe "highlight_chord event" do
     test "clicking a chord chip with highlight_chord highlights it", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/?chords=Cmaj,Amin")

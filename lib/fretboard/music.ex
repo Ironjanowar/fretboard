@@ -101,9 +101,14 @@ defmodule Fretboard.Music do
 
   @doc """
   Returns the diatonic chords for a key.
+
+  Pass `:seventh` as the third argument to get 7th-chord qualities.
   """
-  @spec diatonic_chords(String.t(), atom()) :: [%{root: String.t(), quality: atom()}]
-  def diatonic_chords(tonic, scale_type), do: Scale.diatonic_chords(tonic, scale_type)
+  @spec diatonic_chords(String.t(), atom(), :triad | :seventh) :: [
+          %{root: String.t(), quality: atom()}
+        ]
+  def diatonic_chords(tonic, scale_type, mode \\ :triad),
+    do: Scale.diatonic_chords(tonic, scale_type, mode)
 
   @doc """
   Returns available scale types.

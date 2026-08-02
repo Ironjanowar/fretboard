@@ -59,6 +59,7 @@ defmodule FretboardWeb.FretboardLive do
        show_key_modal: false,
        key_tonic: "C",
        key_scale_type: :major,
+       key_chord_mode: :triad,
        show_progression_modal: false,
        progression_id: :pop_i_v_vi_iv,
        progression_tonic: "C"
@@ -214,7 +215,13 @@ defmodule FretboardWeb.FretboardLive do
 
   @impl true
   def handle_event("open_key_modal", _params, socket) do
-    {:noreply, assign(socket, show_key_modal: true, key_tonic: "C", key_scale_type: :major)}
+    {:noreply,
+     assign(socket,
+       show_key_modal: true,
+       key_tonic: "C",
+       key_scale_type: :major,
+       key_chord_mode: :triad
+     )}
   end
 
   @impl true
@@ -225,16 +232,30 @@ defmodule FretboardWeb.FretboardLive do
   @impl true
   def handle_event(
         "update_key",
-        %{"key" => %{"tonic" => tonic, "scale_type" => scale_type}},
+        %{"key" => %{"tonic" => tonic, "scale_type" => scale_type} = key_params},
         socket
       ) do
+    chord_mode =
+      key_params
+      |> Map.get("chord_mode", "triad")
+      |> String.to_existing_atom()
+
     {:noreply,
-     assign(socket, key_tonic: tonic, key_scale_type: String.to_existing_atom(scale_type))}
+     assign(socket,
+       key_tonic: tonic,
+       key_scale_type: String.to_existing_atom(scale_type),
+       key_chord_mode: chord_mode
+     )}
   end
 
   @impl true
   def handle_event("apply_key", _params, socket) do
-    active_chords = Music.diatonic_chords(socket.assigns.key_tonic, socket.assigns.key_scale_type)
+    active_chords =
+      Music.diatonic_chords(
+        socket.assigns.key_tonic,
+        socket.assigns.key_scale_type,
+        socket.assigns.key_chord_mode
+      )
 
     {:noreply,
      socket
@@ -446,6 +467,7 @@ defmodule FretboardWeb.FretboardLive do
         show={@show_key_modal}
         key_tonic={@key_tonic}
         key_scale_type={@key_scale_type}
+        key_chord_mode={@key_chord_mode}
         chord_colors={@chord_colors}
       />
 

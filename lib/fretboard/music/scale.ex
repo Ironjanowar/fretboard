@@ -106,15 +106,23 @@ defmodule Fretboard.Music.Scale do
       iex> Fretboard.Music.Scale.diatonic_chords("C", :major)
       [%{root: "C", quality: :major}, %{root: "D", quality: :minor}, %{root: "E", quality: :minor}, %{root: "F", quality: :major}, %{root: "G", quality: :major}, %{root: "A", quality: :minor}, %{root: "B", quality: :dim}]
   """
-  @spec diatonic_chords(String.t(), atom()) :: [%{root: String.t(), quality: atom()}]
-  def diatonic_chords(tonic, scale_type) do
+  @spec diatonic_chords(String.t(), atom(), :triad | :seventh) :: [
+          %{root: String.t(), quality: atom()}
+        ]
+  def diatonic_chords(tonic, scale_type, mode \\ :triad) do
     formula = Map.fetch!(@scale_formulas, scale_type)
     notes = Enum.map(formula, &Note.note_at(tonic, &1))
     semitone_set = MapSet.new(formula)
 
+    infer_fn =
+      case mode do
+        :seventh -> &infer_7th_quality/2
+        :triad -> &infer_quality/2
+      end
+
     Enum.zip(notes, formula)
     |> Enum.map(fn {note, root_semitone} ->
-      quality = infer_quality(root_semitone, semitone_set)
+      quality = infer_fn.(root_semitone, semitone_set)
       %{root: note, quality: quality}
     end)
   end
@@ -136,6 +144,55 @@ defmodule Fretboard.Music.Scale do
       |> MapSet.new()
 
     classify_intervals(intervals)
+  end
+
+  @doc """
+  Infers the 7th-chord quality for a scale degree by analyzing
+  which intervals from that root exist within the scale.
+
+  Tries 7th-chord rules in priority order (dim7, m7b5, min7,
+  dominant 7, maj7, min_maj7, aug_maj7, aug7). Falls back to
+  the existing triad classifier when no 7th interval is present.
+
+  ## Examples
+
+      iex> Fretboard.Music.Scale.infer_7th_quality(0, MapSet.new([0, 2, 4, 5, 7, 9, 11]))
+      :maj7
+  """
+  @spec infer_7th_quality(integer(), MapSet.t()) :: atom()
+  def infer_7th_quality(root_semitone, scale_semitones) do
+    intervals =
+      scale_semitones
+      |> Enum.map(fn s -> rem(s - root_semitone + 12, 12) end)
+      |> MapSet.new()
+
+    classify_7th(intervals)
+  end
+
+  # 7th-chord rules in priority order.
+  # Each rule is {required, excluded, quality}.
+  # dim7 and m7b5 exclude the perfect 5th (7): when the scale contains
+  # both a diminished and perfect 5th above the root, prefer the non-
+  # diminished interpretation (min7 / dominant 7).
+  @seventh_rules [
+    {[3, 6, 9], [7], :dim7},
+    {[3, 6, 10], [7], :m7b5},
+    {[3, 7, 10], [], :min7},
+    {[4, 7, 10], [], :"7"},
+    {[4, 7, 11], [], :maj7},
+    {[3, 7, 11], [], :min_maj7},
+    {[4, 8, 11], [], :aug_maj7},
+    {[4, 8, 10], [], :aug7}
+  ]
+
+  defp classify_7th(intervals) do
+    case Enum.find(@seventh_rules, fn {required, excluded, _} ->
+           Enum.all?(required, &MapSet.member?(intervals, &1)) and
+             not Enum.any?(excluded, &MapSet.member?(intervals, &1))
+         end) do
+      {_, _, quality} -> quality
+      nil -> classify_intervals(intervals)
+    end
   end
 
   # Interval pattern matching for chord quality inference.

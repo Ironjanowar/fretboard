@@ -112,6 +112,7 @@ defmodule FretboardWeb.Modals do
   attr :show, :boolean, required: true
   attr :key_tonic, :string, required: true
   attr :key_scale_type, :atom, required: true
+  attr :key_chord_mode, :atom, required: true
   attr :chord_colors, :list, required: true
 
   def key_modal(assigns) do
@@ -157,6 +158,17 @@ defmodule FretboardWeb.Modals do
                   <% end %>
                 </select>
               </div>
+              <div class="form-col">
+                <label class="form-label">Chords</label>
+                <select
+                  id={"key-chord-mode-select-#{@key_chord_mode}"}
+                  class="form-select-full"
+                  name="key[chord_mode]"
+                >
+                  <option value="triad" selected={@key_chord_mode == :triad}>Triads</option>
+                  <option value="seventh" selected={@key_chord_mode == :seventh}>7ths</option>
+                </select>
+              </div>
             </div>
           </form>
 
@@ -165,10 +177,10 @@ defmodule FretboardWeb.Modals do
             <label class="section-label">Diatonic Chords</label>
             <div
               class="key-preview-wrapper"
-              id={"key-preview-#{@key_tonic}-#{@key_scale_type}"}
+              id={"key-preview-#{@key_tonic}-#{@key_scale_type}-#{@key_chord_mode}"}
               phx-update="replace"
             >
-              <%= for {chord, i} <- Enum.with_index(Music.diatonic_chords(@key_tonic, @key_scale_type)) do %>
+              <%= for {chord, i} <- Enum.with_index(Music.diatonic_chords(@key_tonic, @key_scale_type, @key_chord_mode)) do %>
                 <span
                   class="key-preview-chip"
                   style={"background-color: #{chord_color(i, @chord_colors)}"}

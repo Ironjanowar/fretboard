@@ -21,7 +21,10 @@ defmodule Fretboard.Music.Chord do
     maj7: [0, 4, 7, 11],
     min7: [0, 3, 7, 10],
     dim7: [0, 3, 6, 9],
-    m7b5: [0, 3, 6, 10]
+    m7b5: [0, 3, 6, 10],
+    min_maj7: [0, 3, 7, 11],
+    aug_maj7: [0, 4, 8, 11],
+    aug7: [0, 4, 8, 10]
   }
 
   @interval_names %{
@@ -50,7 +53,10 @@ defmodule Fretboard.Music.Chord do
     maj7: "maj7",
     min7: "min7",
     dim7: "dim7",
-    m7b5: "m7b5"
+    m7b5: "m7b5",
+    min_maj7: "mMaj7",
+    aug_maj7: "augMaj7",
+    aug7: "aug7"
   }
 
   @doc """
@@ -120,7 +126,7 @@ defmodule Fretboard.Music.Chord do
   def grouped_qualities do
     [
       {"Triads", [:major, :minor, :dim, :aug, :sus2, :sus4]},
-      {"Sevenths", [:"7", :maj7, :min7, :dim7, :m7b5]}
+      {"Sevenths", [:"7", :maj7, :min7, :dim7, :m7b5, :min_maj7, :aug_maj7, :aug7]}
     ]
   end
 end

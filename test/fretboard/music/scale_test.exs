@@ -205,6 +205,108 @@ defmodule Fretboard.Music.ScaleTest do
     end
   end
 
+  describe "infer_7th_quality/2" do
+    test "C major degree 1 (root=0) → maj7" do
+      scale = MapSet.new([0, 2, 4, 5, 7, 9, 11])
+      assert Scale.infer_7th_quality(0, scale) == :maj7
+    end
+
+    test "C major degree 5 (root=7) → dominant 7" do
+      scale = MapSet.new([0, 2, 4, 5, 7, 9, 11])
+      assert Scale.infer_7th_quality(7, scale) == :"7"
+    end
+
+    test "C major degree 7 (root=11) → m7b5" do
+      scale = MapSet.new([0, 2, 4, 5, 7, 9, 11])
+      assert Scale.infer_7th_quality(11, scale) == :m7b5
+    end
+
+    test "C major degree 2 (root=2) → min7" do
+      scale = MapSet.new([0, 2, 4, 5, 7, 9, 11])
+      assert Scale.infer_7th_quality(2, scale) == :min7
+    end
+
+    test "A harmonic minor degree 1 (root=0) → min_maj7" do
+      scale = MapSet.new([0, 2, 3, 5, 7, 8, 11])
+      assert Scale.infer_7th_quality(0, scale) == :min_maj7
+    end
+
+    test "A harmonic minor degree 3 (root=3) → aug_maj7" do
+      scale = MapSet.new([0, 2, 3, 5, 7, 8, 11])
+      assert Scale.infer_7th_quality(3, scale) == :aug_maj7
+    end
+
+    test "C whole tone degree 1 (root=0) → aug7" do
+      scale = MapSet.new([0, 2, 4, 6, 8, 10])
+      assert Scale.infer_7th_quality(0, scale) == :aug7
+    end
+
+    test "falls back to triad when no 7th interval available (C pentatonic major degree 1)" do
+      scale = MapSet.new([0, 2, 4, 7, 9])
+      assert Scale.infer_7th_quality(0, scale) == :major
+    end
+  end
+
+  describe "diatonic_chords/3" do
+    test "C major :seventh → 7 chords with 7th qualities" do
+      chords = Scale.diatonic_chords("C", :major, :seventh)
+      assert length(chords) == 7
+
+      assert Enum.at(chords, 0) == %{root: "C", quality: :maj7}
+      assert Enum.at(chords, 1) == %{root: "D", quality: :min7}
+      assert Enum.at(chords, 2) == %{root: "E", quality: :min7}
+      assert Enum.at(chords, 3) == %{root: "F", quality: :maj7}
+      assert Enum.at(chords, 4) == %{root: "G", quality: :"7"}
+      assert Enum.at(chords, 5) == %{root: "A", quality: :min7}
+      assert Enum.at(chords, 6) == %{root: "B", quality: :m7b5}
+    end
+
+    test "A minor :seventh → 7 chords" do
+      chords = Scale.diatonic_chords("A", :minor, :seventh)
+      assert length(chords) == 7
+
+      assert Enum.at(chords, 0) == %{root: "A", quality: :min7}
+      assert Enum.at(chords, 1) == %{root: "B", quality: :m7b5}
+      assert Enum.at(chords, 2) == %{root: "C", quality: :maj7}
+      assert Enum.at(chords, 3) == %{root: "D", quality: :min7}
+      assert Enum.at(chords, 4) == %{root: "E", quality: :min7}
+      assert Enum.at(chords, 5) == %{root: "F", quality: :maj7}
+      assert Enum.at(chords, 6) == %{root: "G", quality: :"7"}
+    end
+
+    test "A harmonic_minor :seventh → 7 chords" do
+      chords = Scale.diatonic_chords("A", :harmonic_minor, :seventh)
+      assert length(chords) == 7
+
+      assert Enum.at(chords, 0) == %{root: "A", quality: :min_maj7}
+      assert Enum.at(chords, 1) == %{root: "B", quality: :dim7}
+      assert Enum.at(chords, 2) == %{root: "C", quality: :aug_maj7}
+      assert Enum.at(chords, 3) == %{root: "D", quality: :min7}
+      assert Enum.at(chords, 4) == %{root: "E", quality: :"7"}
+      assert Enum.at(chords, 5) == %{root: "F", quality: :maj7}
+      assert Enum.at(chords, 6) == %{root: "G#", quality: :dim7}
+    end
+
+    test "C major :triad → same as default diatonic_chords/2" do
+      seventh = Scale.diatonic_chords("C", :major, :triad)
+      default = Scale.diatonic_chords("C", :major)
+      assert seventh == default
+    end
+
+    test "C major default (no mode arg) → backward compatible, triads only" do
+      chords = Scale.diatonic_chords("C", :major)
+      assert length(chords) == 7
+      assert Enum.at(chords, 0) == %{root: "C", quality: :major}
+      assert Enum.at(chords, 4) == %{root: "G", quality: :major}
+      assert Enum.at(chords, 6) == %{root: "B", quality: :dim}
+    end
+
+    test "C pentatonic_major :seventh → 5 chords, falls back to triads" do
+      chords = Scale.diatonic_chords("C", :pentatonic_major, :seventh)
+      assert length(chords) == 5
+    end
+  end
+
   describe "scale_label/1" do
     test "returns Major for major" do
       assert Scale.scale_label(:major) == "Major"
