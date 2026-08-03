@@ -484,3 +484,65 @@ body {
   gap: 0.75rem;
   margin-top: 0.5rem;
 }
+
+/* --- Multi-Key Suggestions --- */
+.multi-key-group {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.multi-key-group:last-of-type {
+  border-bottom: none;
+}
+
+.multi-key-group-label {
+  display: block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9ca3af;
+  margin-bottom: 0.5rem;
+}
+
+.multi-key-your-chords {
+  margin-top: 0.5rem;
+  padding-left: 0.5rem;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.multi-key-your-chords-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-right: 0.25rem;
+}
+
+.multi-key-unmatched {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background: rgba(107, 114, 128, 0.08);
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.multi-key-unmatched-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-right: 0.25rem;
+}
+
+.chord-chip--unmatched {
+  opacity: 0.5;
+  filter: grayscale(1);
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  background: #4b5563;
+  color: #d1d5db;
+}

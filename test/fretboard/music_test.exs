@@ -2,6 +2,7 @@ defmodule Fretboard.MusicTest do
   use ExUnit.Case, async: true
 
   alias Fretboard.Music
+  alias Fretboard.Music.Scale
 
   describe "standard_tuning/0" do
     test "returns standard guitar tuning" do
@@ -316,6 +317,32 @@ defmodule Fretboard.MusicTest do
     test "works with minor key progression" do
       chords = Music.progression_chords("A", :andalusian_cadence)
       assert [%{root: "A", quality: :minor} | _] = chords
+    end
+  end
+
+  describe "suggest_keys/1" do
+    test "delegates to Scale.suggest_keys/1" do
+      chords = [
+        %{root: "C", quality: :major},
+        %{root: "F", quality: :major},
+        %{root: "G", quality: :major}
+      ]
+
+      assert Music.suggest_keys(chords) == Scale.suggest_keys(chords)
+    end
+  end
+
+  describe "suggest_multi_keys/1" do
+    test "delegates to Scale.suggest_multi_keys/1" do
+      chords = [
+        %{root: "C", quality: :major},
+        %{root: "F", quality: :major},
+        %{root: "G", quality: :major},
+        %{root: "D", quality: :major},
+        %{root: "A", quality: :major}
+      ]
+
+      assert Music.suggest_multi_keys(chords) == Scale.suggest_multi_keys(chords)
     end
   end
 end

@@ -150,6 +150,18 @@ defmodule Fretboard.Music do
   def suggest_keys(chords), do: Scale.suggest_keys(chords)
 
   @doc """
+  Suggests multiple keys that together cover the given chords using a
+  greedy set-cover algorithm (max 3 groups).
+
+  Each chord is a map with `:root` and `:quality`. Returns a list of
+  groups, each with a `:key` (map or `nil` for unmatched chords) and a
+  `:chords` list. Groups with real keys are ordered by coverage
+  descending; the unmatched group (`key: nil`), if present, is last.
+  """
+  @spec suggest_multi_keys([%{root: String.t(), quality: atom()}]) :: [map()]
+  def suggest_multi_keys(chords), do: Scale.suggest_multi_keys(chords)
+
+  @doc """
   Returns the list of available chord progression ids.
   """
   @spec available_progressions() :: [atom()]

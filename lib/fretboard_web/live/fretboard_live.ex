@@ -69,7 +69,8 @@ defmodule FretboardWeb.FretboardLive do
        show_progression_modal: false,
        progression_id: :pop_i_v_vi_iv,
        progression_tonic: "C",
-       key_suggestions: AsyncResult.loading()
+       key_suggestions: AsyncResult.loading(),
+       multi_key_suggestions: AsyncResult.loading()
      )}
   end
 
@@ -114,9 +115,18 @@ defmodule FretboardWeb.FretboardLive do
      )
      |> assign_async(:key_suggestions, fn ->
        if length(chords) >= 2 do
-         {:ok, %{key_suggestions: Music.suggest_keys(chords)}}
+         suggestions = Music.suggest_keys(chords)
+
+         multi =
+           if suggestions == [] and length(chords) >= 3 do
+             Music.suggest_multi_keys(chords)
+           else
+             []
+           end
+
+         {:ok, %{key_suggestions: suggestions, multi_key_suggestions: multi}}
        else
-         {:ok, %{key_suggestions: []}}
+         {:ok, %{key_suggestions: [], multi_key_suggestions: []}}
        end
      end)}
   end
@@ -622,6 +632,91 @@ defmodule FretboardWeb.FretboardLive do
                   <div class="key-card-arrow">Ver tonalidad →</div>
                 </div>
               <% end %>
+            <% end %>
+          <% end %>
+        </div>
+      </.async_result>
+
+      <%!-- Multi-Key Suggestions (only when no single key found) --%>
+      <.async_result :let={multi_key_suggestions} assign={@multi_key_suggestions}>
+        <:loading>
+          <div :if={length(@active_chords) >= 3} class="key-suggestions-wrapper">
+            <p class="key-suggestions-loading">Analizando tonalidades...</p>
+          </div>
+        </:loading>
+        <:failed>
+          <div :if={length(@active_chords) >= 3} class="key-suggestions-wrapper">
+            <p class="text-muted">Error al calcular tonalidades.</p>
+          </div>
+        </:failed>
+        <div
+          :if={multi_key_suggestions != [] and length(@active_chords) >= 3}
+          class="key-suggestions-wrapper"
+          id="multi-key-suggestions"
+        >
+          <label class="section-label" style="width:100%">
+            No hay una tonalidad común. Se encontraron {length(
+              Enum.filter(multi_key_suggestions, &(&1.key != nil))
+            )} tonalidades:
+          </label>
+
+          <%= for {group, i} <- Enum.with_index(multi_key_suggestions) do %>
+            <%= if group.key == nil do %>
+              <%!-- Unmatched chords --%>
+              <div class="multi-key-unmatched">
+                <span class="multi-key-unmatched-label">Acordes sin tonalidad compatible:</span>
+                <%= for chord <- group.chords do %>
+                  <span class="chord-chip chord-chip--unmatched">
+                    {Music.chord_label(chord.root, chord.quality)}
+                  </span>
+                <% end %>
+              </div>
+            <% else %>
+              <%!-- Tonal group --%>
+              <div class="multi-key-group">
+                <span class="multi-key-group-label">Tonalidad {i + 1}</span>
+                <div
+                  class="key-card"
+                  phx-click="apply_suggested_key"
+                  phx-value-tonic={group.key.tonic}
+                  phx-value-scale_type={group.key.scale_type}
+                >
+                  <div class="key-card-header">
+                    <span class="key-card-title">
+                      {Music.scale_label(group.key.scale_type)} {group.key.tonic}
+                    </span>
+                    <span class="key-card-score">{group.key.score}/{group.key.total}</span>
+                  </div>
+                  <div class="key-card-chips">
+                    <%= for {dc, j} <- Enum.with_index(group.key.diatonic_chords) do %>
+                      <span
+                        class="key-card-chip"
+                        style={chord_color(j, @chord_colors) |> then(&"background-color: #{&1};")}
+                      >
+                        {Music.chord_label(dc.root, dc.quality)}
+                      </span>
+                    <% end %>
+                  </div>
+                  <div class="key-card-arrow">Ver tonalidad →</div>
+                </div>
+                <div class="multi-key-your-chords">
+                  <span class="multi-key-your-chords-label">Tus acordes:</span>
+                  <%= for chord <- group.chords do %>
+                    <% chord_idx = Enum.find_index(@active_chords, &(&1 == chord)) %>
+                    <span
+                      class="key-card-chip"
+                      style={
+                        if chord_idx,
+                          do:
+                            chord_color(chord_idx, @chord_colors) |> then(&"background-color: #{&1};"),
+                          else: "background-color: #6b7280;"
+                      }
+                    >
+                      {Music.chord_label(chord.root, chord.quality)}
+                    </span>
+                  <% end %>
+                </div>
+              </div>
             <% end %>
           <% end %>
         </div>

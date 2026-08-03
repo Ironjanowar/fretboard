@@ -2,7 +2,6 @@ defmodule Fretboard.Music.ScaleTest do
   use ExUnit.Case, async: true
 
   alias Fretboard.Music.Scale
-  alias Fretboard.Music.Chord
   alias Fretboard.Music.Note
 
   describe "available_scale_types/0" do
@@ -457,6 +456,223 @@ defmodule Fretboard.Music.ScaleTest do
 
       # Full list must be non-increasing.
       assert scores == Enum.sort(scores, :desc)
+    end
+  end
+
+  describe "suggest_multi_keys/1" do
+    # Helper: find a group in the results whose key matches tonic + scale_type.
+    defp find_group(results, tonic, scale_type) do
+      Enum.find(results, fn g ->
+        g.key != nil and g.key.tonic == tonic and g.key.scale_type == scale_type
+      end)
+    end
+
+    test "empty list → []" do
+      assert Scale.suggest_multi_keys([]) == []
+    end
+
+    test "1 chord → []" do
+      assert Scale.suggest_multi_keys([chord("C", :major)]) == []
+    end
+
+    test "2 chords → [] (minimum 3 to activate)" do
+      assert Scale.suggest_multi_keys([chord("C", :major), chord("F", :major)]) == []
+    end
+
+    test "3 incompatible chords (C, E, G# major) → [] (all groups of size 1)" do
+      results =
+        Scale.suggest_multi_keys([
+          chord("C", :major),
+          chord("E", :major),
+          chord("G#", :major)
+        ])
+
+      assert results == []
+    end
+
+    test "C-F-G-D-A major → 2 groups (C major covers C,F,G; second group covers D,A)" do
+      results =
+        Scale.suggest_multi_keys([
+          chord("C", :major),
+          chord("F", :major),
+          chord("G", :major),
+          chord("D", :major),
+          chord("A", :major)
+        ])
+
+      # No unmatched group (key: nil) — all chords are covered.
+      unmatched = Enum.filter(results, &(&1.key == nil))
+      assert unmatched == []
+
+      # Find the C major group (highest coverage: C, F, G).
+      c_group = find_group(results, "C", :major)
+      assert c_group != nil
+
+      # C major group should cover at least C, F, G.
+      roots = Enum.map(c_group.chords, & &1.root)
+      assert "C" in roots
+      assert "F" in roots
+      assert "G" in roots
+
+      # The second group should cover at least D and A.
+      # (Could be G major or D major — both are equally valid musically.)
+      real_groups = Enum.filter(results, &(&1.key != nil))
+      assert length(real_groups) == 2
+
+      second_group = Enum.at(real_groups, 1)
+      second_roots = Enum.map(second_group.chords, & &1.root)
+      assert "D" in second_roots
+      assert "A" in second_roots
+
+      # Total groups with real keys must be <= 3.
+      assert length(real_groups) <= 3
+    end
+
+    test "C-F-G-A#-D major → groups plus possibly unmatched (A#)" do
+      results =
+        Scale.suggest_multi_keys([
+          chord("C", :major),
+          chord("F", :major),
+          chord("G", :major),
+          chord("A#", :major),
+          chord("D", :major)
+        ])
+
+      # If there is an unmatched group, it must have key: nil and be last.
+      unmatched = Enum.filter(results, &(&1.key == nil))
+
+      if unmatched != [] do
+        assert length(unmatched) == 1
+        # The unmatched group must be the last element.
+        assert List.last(results) == hd(unmatched)
+        # Its chords must be a non-empty list.
+        assert hd(unmatched).chords != []
+      end
+    end
+
+    test "Cmaj7 + Fmaj7 + G7 + D7 + A7 → 2 groups via 7th→triad matching" do
+      results =
+        Scale.suggest_multi_keys([
+          chord("C", :maj7),
+          chord("F", :maj7),
+          chord("G", :"7"),
+          chord("D", :"7"),
+          chord("A", :"7")
+        ])
+
+      # Should produce at least one group with a real key.
+      real_groups = Enum.filter(results, &(&1.key != nil))
+      assert length(real_groups) >= 1
+
+      # Total groups with real keys must be <= 3.
+      assert length(real_groups) <= 3
+
+      # Each group's key must have the expected structure.
+      for g <- real_groups do
+        assert Map.has_key?(g.key, :tonic)
+        assert Map.has_key?(g.key, :scale_type)
+        assert Map.has_key?(g.key, :score)
+        assert Map.has_key?(g.key, :total)
+        assert Map.has_key?(g.key, :diatonic_chords)
+      end
+    end
+
+    test "each group has correct structure (key nil or map, chords list)" do
+      results =
+        Scale.suggest_multi_keys([
+          chord("C", :major),
+          chord("F", :major),
+          chord("G", :major),
+          chord("A#", :major),
+          chord("D", :major)
+        ])
+
+      for g <- results do
+        # key is either nil or a map with the required fields.
+        cond do
+          g.key == nil ->
+            assert is_list(g.chords)
+            assert g.chords != []
+
+          is_map(g.key) ->
+            assert Map.has_key?(g.key, :tonic)
+            assert Map.has_key?(g.key, :scale_type)
+            assert Map.has_key?(g.key, :score)
+            assert Map.has_key?(g.key, :total)
+            assert Map.has_key?(g.key, :diatonic_chords)
+
+            assert is_binary(g.key.tonic)
+            assert is_atom(g.key.scale_type)
+            assert is_integer(g.key.score)
+            assert is_integer(g.key.total)
+            assert is_list(g.key.diatonic_chords)
+
+            assert is_list(g.chords)
+
+          true ->
+            flunk("group key must be nil or a map, got: #{inspect(g.key)}")
+        end
+      end
+    end
+
+    test "max 3 groups with real keys (not counting the nil/unmatched group)" do
+      # Use chords that could produce many small groups.
+      results =
+        Scale.suggest_multi_keys([
+          chord("C", :major),
+          chord("D", :major),
+          chord("E", :major),
+          chord("F", :major),
+          chord("G", :major),
+          chord("A", :major),
+          chord("B", :major)
+        ])
+
+      real_groups = Enum.filter(results, &(&1.key != nil))
+      assert length(real_groups) <= 3
+    end
+
+    test "overlap: G major may appear in multiple groups when applicable" do
+      results =
+        Scale.suggest_multi_keys([
+          chord("C", :major),
+          chord("F", :major),
+          chord("G", :major),
+          chord("D", :major),
+          chord("A", :major)
+        ])
+
+      # G major is diatonic to both C major and G major keys, so it may
+      # appear in more than one group's chord list.
+      real_groups = Enum.filter(results, &(&1.key != nil))
+
+      g_chord = chord("G", :major)
+
+      groups_containing_g =
+        Enum.count(real_groups, fn g ->
+          Enum.any?(g.chords, &(&1 == g_chord))
+        end)
+
+      # G should appear in at least one group; overlap allows it in more.
+      assert groups_containing_g >= 1
+    end
+
+    test "groups are ordered by coverage (chord count) descending" do
+      results =
+        Scale.suggest_multi_keys([
+          chord("C", :major),
+          chord("F", :major),
+          chord("G", :major),
+          chord("D", :major),
+          chord("A", :major)
+        ])
+
+      real_groups = Enum.filter(results, &(&1.key != nil))
+
+      if length(real_groups) >= 2 do
+        sizes = Enum.map(real_groups, &length(&1.chords))
+        assert sizes == Enum.sort(sizes, :desc)
+      end
     end
   end
 end

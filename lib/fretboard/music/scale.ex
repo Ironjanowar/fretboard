@@ -324,4 +324,222 @@ defmodule Fretboard.Music.Scale do
       Map.fetch!(@seventh_to_triad, quality)
     end
   end
+
+  # Flat → sharp equivalents for normalizing note names that use flats
+  # (the chromatic scale in Note.ex uses sharps only).
+  @flat_to_sharp %{
+    "Db" => "C#",
+    "Eb" => "D#",
+    "Fb" => "E",
+    "Gb" => "F#",
+    "Ab" => "G#",
+    "Bb" => "A#",
+    "Cb" => "B"
+  }
+
+  # Scale priority order for tiebreaking during greedy set cover.
+  # Lower index = higher priority. Matches the flattening of
+  # @grouped_scale_types (excluding :chromatic).
+  @scale_priority_map @grouped_scale_types
+                      |> Enum.flat_map(&elem(&1, 1))
+                      |> Enum.with_index()
+                      |> Map.new()
+
+  @doc """
+  Suggests multiple keys that together cover the given chords using a
+  greedy set-cover algorithm (max 3 groups).
+
+  Each chord is a map with `:root` and `:quality`. Returns a list of
+  groups, each of the form:
+
+      %{
+        key: %{tonic, scale_type, score, total, diatonic_chords} | nil,
+        chords: [%{root, quality}, ...]
+      }
+
+  Groups with real keys are ordered by coverage (chord count) descending.
+  If any chords remain unmatched, a final group with `key: nil` is appended.
+
+  ## Examples
+
+      iex> Fretboard.Music.Scale.suggest_multi_keys([])
+      []
+  """
+  @spec suggest_multi_keys([%{root: String.t(), quality: atom()}]) :: [map()]
+  def suggest_multi_keys(chords) do
+    if length(chords) < 3 do
+      []
+    else
+      multi_keys_run(chords)
+    end
+  end
+
+  defp multi_keys_run(chords) do
+    # Normalize roots so flat names (Bb, Db, …) map to their sharp
+    # equivalents used by Note/Chord.
+    norm_chords = Enum.map(chords, &normalize_chord/1)
+
+    candidates = build_candidates(norm_chords)
+
+    selected =
+      greedy_select(candidates, norm_chords, [], MapSet.new(), 3)
+
+    # Rule: if every selected group has exactly 1 chord, no chord shares a
+    # key with any other → return [].
+    if Enum.all?(selected, fn {_key, covered} -> length(covered) == 1 end) do
+      []
+    else
+      build_groups(selected, norm_chords)
+    end
+  end
+
+  defp normalize_chord(%{root: root, quality: quality}) do
+    %{root: normalize_note(root), quality: quality}
+  end
+
+  defp normalize_note(note) do
+    Map.get(@flat_to_sharp, note, note)
+  end
+
+  # Build all 168 candidate keys (12 tonics × 14 scale types, excluding
+  # :chromatic). For each candidate, precompute which input chord indices
+  # it strictly covers (chord notes ⊆ scale notes) and its diatonic score.
+  defp build_candidates(chords) do
+    candidate_types = List.delete(@scale_types, :chromatic)
+    tonics = Note.chromatic_scale()
+
+    # Precompute each chord's note set once.
+    chord_note_sets =
+      Enum.map(chords, fn %{root: root, quality: quality} ->
+        MapSet.new(Chord.notes(root, quality))
+      end)
+
+    for tonic <- tonics,
+        scale_type <- candidate_types do
+      scale_set = MapSet.new(scale_notes(tonic, scale_type))
+      dc = diatonic_chords(tonic, scale_type, :triad)
+      dc_map = Map.new(dc, fn %{root: r, quality: q} -> {r, q} end)
+
+      covered_indices =
+        chord_note_sets
+        |> Enum.with_index()
+        |> Enum.filter(fn {note_set, _i} -> MapSet.subset?(note_set, scale_set) end)
+        |> Enum.map(fn {_note_set, i} -> i end)
+        |> MapSet.new()
+
+      diatonic_score =
+        covered_indices
+        |> Enum.filter(fn i ->
+          %{root: root, quality: quality} = Enum.at(chords, i)
+          expected = triad_base_quality(quality)
+          Map.get(dc_map, root) == expected
+        end)
+        |> length()
+
+      %{
+        tonic: tonic,
+        scale_type: scale_type,
+        covered: covered_indices,
+        diatonic_score: diatonic_score,
+        diatonic_chords: dc
+      }
+    end
+  end
+
+  # Greedy iteration: at each step pick the candidate that covers the most
+  # *uncovered* chords. Tiebreak: higher diatonic score, then lower scale
+  # priority index (higher priority). Stop after `max_groups`, when no
+  # uncovered chords remain, or no candidate covers any remaining chord.
+  defp greedy_select(_candidates, _chords, selected, _covered, 0) do
+    selected
+  end
+
+  defp greedy_select(candidates, chords, selected, covered, max_groups) do
+    all_indices = MapSet.new(0..(length(chords) - 1)//1)
+    remaining = MapSet.difference(all_indices, covered)
+
+    if MapSet.size(remaining) == 0 do
+      selected
+    else
+      best =
+        candidates
+        |> Enum.filter(fn c -> MapSet.size(MapSet.intersection(c.covered, remaining)) > 0 end)
+        |> Enum.max_by(
+          fn c ->
+            coverage = MapSet.size(MapSet.intersection(c.covered, remaining))
+
+            {coverage, c.diatonic_score, -Map.get(@scale_priority_map, c.scale_type)}
+          end,
+          fn -> nil end
+        )
+
+      case best do
+        nil ->
+          selected
+
+        best ->
+          newly_covered = MapSet.intersection(best.covered, remaining)
+          new_covered = MapSet.union(covered, newly_covered)
+
+          covered_chords =
+            newly_covered
+            |> Enum.sort()
+            |> Enum.map(&Enum.at(chords, &1))
+
+          greedy_select(
+            candidates,
+            chords,
+            [{best, covered_chords} | selected],
+            new_covered,
+            max_groups - 1
+          )
+      end
+    end
+  end
+
+  # Convert the list of {candidate, covered_chords} tuples (built in
+  # reverse order during greedy selection) into the final return shape.
+  defp build_groups(selected, chords) do
+    total = length(chords)
+
+    groups =
+      selected
+      |> Enum.reverse()
+      |> Enum.map(fn {cand, covered_chords} ->
+        %{
+          key: %{
+            tonic: cand.tonic,
+            scale_type: cand.scale_type,
+            score: cand.diatonic_score,
+            total: total,
+            diatonic_chords: cand.diatonic_chords
+          },
+          chords: covered_chords
+        }
+      end)
+      # Order groups by coverage (chord count) descending.
+      |> Enum.sort_by(&(-length(&1.chords)))
+
+    # Build the unmatched group from chords not covered by any real key.
+    covered_indices =
+      selected
+      |> Enum.flat_map(fn {_cand, covered_chords} ->
+        Enum.map(covered_chords, fn chord ->
+          Enum.find_index(chords, &(&1 == chord))
+        end)
+      end)
+      |> MapSet.new()
+
+    unmatched =
+      chords
+      |> Enum.with_index()
+      |> Enum.filter(fn {_chord, i} -> not MapSet.member?(covered_indices, i) end)
+      |> Enum.map(fn {chord, _i} -> chord end)
+
+    if unmatched == [] do
+      groups
+    else
+      groups ++ [%{key: nil, chords: unmatched}]
+    end
+  end
 end
