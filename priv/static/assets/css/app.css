@@ -553,7 +553,6 @@ body {
   background-color: #1f2937;
   border: 1px solid #374151;
   border-radius: 0.375rem;
-  overflow: hidden;
 }
 
 .tab-toggle-btn {
@@ -565,6 +564,15 @@ body {
   cursor: pointer;
   transition: background-color 0.15s, color 0.15s;
   color: #9ca3af;
+  white-space: nowrap;
+}
+
+.tab-toggle-btn:first-child {
+  border-radius: 0.375rem 0 0 0.375rem;
+}
+
+.tab-toggle-btn:last-child {
+  border-radius: 0 0.375rem 0.375rem 0;
 }
 
 .tab-toggle-btn--active {

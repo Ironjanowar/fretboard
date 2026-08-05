@@ -439,9 +439,15 @@ defmodule FretboardWeb.FretboardLive do
           Map.put(socket.assigns.marked_notes, string, fret)
       end
 
+    # Pre-compute analysis here so the re-render triggered by push_patch
+    # already has the updated value. handle_params will re-compute it
+    # too, but the immediate re-render needs it now.
+    new_analysis = analyzer_state(new_marked, socket.assigns.tuning)
+
     {:noreply,
-     push_analyzer_patch(
-       socket,
+     socket
+     |> assign(marked_notes: new_marked, analysis: new_analysis)
+     |> push_analyzer_patch(
        socket.assigns.instrument,
        socket.assigns.tuning,
        socket.assigns.active_chords,
@@ -454,8 +460,9 @@ defmodule FretboardWeb.FretboardLive do
   @impl true
   def handle_event("clear_notes", _params, socket) do
     {:noreply,
-     push_analyzer_patch(
-       socket,
+     socket
+     |> assign(marked_notes: %{}, analysis: {:empty})
+     |> push_analyzer_patch(
        socket.assigns.instrument,
        socket.assigns.tuning,
        socket.assigns.active_chords,
@@ -903,12 +910,12 @@ defmodule FretboardWeb.FretboardLive do
   # Analyzer results component
   # ---------------------------------------------------------------------------
 
-  attr :marked_notes, :map, required: true
+  attr :analysis, :any, default: nil
   attr :tuning, :list, required: true
 
   defp analyzer_results(assigns) do
     ~H"""
-    <div class="analyzer-results" id="analyzer-results" data-key={analysis_key(@analysis)}>
+    <div class="analyzer-results" id={"analyzer-results-#{analysis_key(@analysis)}"}>
       {case @analysis do
         {:empty} ->
           render_empty(%{})
@@ -931,10 +938,9 @@ defmodule FretboardWeb.FretboardLive do
     """
   end
 
-  # Generates a unique key for the analysis state so LiveView
-  # re-renders this block when the state type changes (e.g. from
-  # chords to interval). Without this, LiveView may try to diff
-  # incompatible HTML structures and fail to update.
+  # Generates a unique key per analysis state so LiveView replaces
+  # the entire container (old ID removed, new ID added) instead of
+  # trying to diff incompatible HTML structures.
   defp analysis_key({:empty}), do: "empty"
   defp analysis_key({:single, note}), do: "single-#{note}"
   defp analysis_key({:interval, a, b, _}), do: "interval-#{a}-#{b}"
