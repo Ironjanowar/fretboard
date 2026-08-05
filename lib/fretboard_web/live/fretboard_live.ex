@@ -74,7 +74,8 @@ defmodule FretboardWeb.FretboardLive do
        key_suggestions: AsyncResult.loading(),
        multi_key_suggestions: AsyncResult.loading(),
        tab: tab,
-       marked_notes: marked_notes
+       marked_notes: marked_notes,
+       analysis: if(tab == :analyzer, do: analyzer_state(marked_notes, tuning), else: nil)
      )}
   end
 
@@ -103,6 +104,7 @@ defmodule FretboardWeb.FretboardLive do
     string_count = Music.instrument_strings(instrument)
     tab = Music.decode_tab(params["tab"])
     marked_notes = Music.decode_marked(params["marked"])
+    analysis = if tab == :analyzer, do: analyzer_state(marked_notes, tuning), else: nil
 
     chords = active_chords
 
@@ -119,7 +121,8 @@ defmodule FretboardWeb.FretboardLive do
        modal_preset: detect_preset(tuning, instrument),
        show_key_modes: false,
        tab: tab,
-       marked_notes: marked_notes
+       marked_notes: marked_notes,
+       analysis: analysis
      )
      |> assign_async(:key_suggestions, fn ->
        if length(chords) >= 2 do
@@ -851,7 +854,7 @@ defmodule FretboardWeb.FretboardLive do
         </div>
 
         <%!-- Analysis results --%>
-        <.analyzer_results marked_notes={@marked_notes} tuning={@tuning} />
+        <.analyzer_results analysis={@analysis} tuning={@tuning} />
       <% end %>
 
       <%!-- Tuning Modal (visible in both tabs) --%>
@@ -905,8 +908,8 @@ defmodule FretboardWeb.FretboardLive do
 
   defp analyzer_results(assigns) do
     ~H"""
-    <div class="analyzer-results" id="analyzer-results">
-      {case analyzer_state(@marked_notes, @tuning) do
+    <div class="analyzer-results" id="analyzer-results" data-key={analysis_key(@analysis)}>
+      {case @analysis do
         {:empty} ->
           render_empty(%{})
 
@@ -920,10 +923,23 @@ defmodule FretboardWeb.FretboardLive do
           render_chord_cards(
             Map.merge(assigns, %{notes: notes, bass: bass, interpretations: interpretations})
           )
+
+        nil ->
+          render_empty(%{})
       end}
     </div>
     """
   end
+
+  # Generates a unique key for the analysis state so LiveView
+  # re-renders this block when the state type changes (e.g. from
+  # chords to interval). Without this, LiveView may try to diff
+  # incompatible HTML structures and fail to update.
+  defp analysis_key({:empty}), do: "empty"
+  defp analysis_key({:single, note}), do: "single-#{note}"
+  defp analysis_key({:interval, a, b, _}), do: "interval-#{a}-#{b}"
+  defp analysis_key({:chords, notes, _, _}), do: "chords-#{Enum.join(notes, "-")}"
+  defp analysis_key(nil), do: "nil"
 
   defp render_empty(assigns) do
     ~H"""
