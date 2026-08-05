@@ -1007,19 +1007,27 @@ defmodule FretboardWeb.FretboardLive do
         {string, fret, note}
       end)
 
-    case positions do
+    # Deduplicate by pitch class — multiple marked positions that
+    # produce the same note name count as one unique pitch class.
+    unique_notes =
+      positions
+      |> Enum.map(&elem(&1, 2))
+      |> Enum.uniq_by(&Music.note_index/1)
+
+    case unique_notes do
       [] ->
         {:empty}
 
-      [{_string, _fret, note}] ->
+      [note] ->
         {:single, note}
 
-      [{_s1, _f1, note_a}, {_s2, _f2, note_b}] ->
+      [note_a, note_b] ->
         label = interval_label(note_a, note_b)
         {:interval, note_a, note_b, label}
 
       _ ->
-        # Three or more notes — sort by pitch (lowest first) so the first is the bass.
+        # Three or more unique pitch classes — sort positions by pitch
+        # (lowest first) so the first is the bass.
         sorted = Enum.sort_by(positions, fn {string, fret, _note} -> {string, fret} end, :desc)
         notes = Enum.map(sorted, &elem(&1, 2))
         bass = hd(notes)
