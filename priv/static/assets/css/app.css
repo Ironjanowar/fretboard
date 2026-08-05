@@ -546,3 +546,202 @@ body {
   background: #4b5563;
   color: #d1d5db;
 }
+
+/* ===== Tab Toggle (Segmented Control) ===== */
+.tab-toggle {
+  display: inline-flex;
+  background-color: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 0.375rem;
+  overflow: hidden;
+}
+
+.tab-toggle-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+  color: #9ca3af;
+}
+
+.tab-toggle-btn--active {
+  background-color: #2563eb;
+  color: #ffffff;
+}
+
+.tab-toggle-btn--active:hover {
+  background-color: #1d4ed8;
+}
+
+.tab-toggle-btn:not(.tab-toggle-btn--active):hover {
+  background-color: #374151;
+  color: #ffffff;
+}
+
+/* ===== Analyzer Fretboard ===== */
+.analyzer-note-circle {
+  fill: #4FC3F7;
+  stroke: #ffffff;
+  stroke-width: 2;
+  cursor: pointer;
+  transition: fill 0.15s;
+}
+
+.analyzer-note-circle:hover {
+  fill: #29B6F6;
+}
+
+.analyzer-note-text {
+  fill: #1a1a1a;
+  font-size: 9px;
+  font-weight: bold;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.analyzer-position {
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.analyzer-position:hover {
+  opacity: 0.3;
+}
+
+/* ===== Clear Button ===== */
+.btn-clear {
+  background-color: #374151;
+  color: #9ca3af;
+  border: 1px solid #4b5563;
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-clear:hover {
+  background-color: #4b5563;
+  color: #ffffff;
+  border-color: #6b7280;
+}
+
+/* ===== Analysis Results ===== */
+.analyzer-results {
+  width: 100%;
+  max-width: 80rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.analyzer-empty {
+  color: #6b7280;
+  font-size: 0.875rem;
+  padding: 1rem 0;
+  text-align: center;
+}
+
+.analyzer-single-note {
+  color: #e5e7eb;
+  font-size: 1rem;
+  padding: 0.5rem 0;
+}
+
+.analyzer-interval {
+  color: #e5e7eb;
+  font-size: 0.95rem;
+  padding: 0.5rem 0;
+}
+
+/* --- Analysis Cards --- */
+.analysis-card {
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.analysis-card:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3);
+}
+
+.analysis-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.analysis-card-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.analysis-card-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.analysis-badge--exact {
+  color: #22c55e;
+  background-color: rgba(34, 197, 94, 0.12);
+}
+
+.analysis-badge--partial {
+  color: #eab308;
+  background-color: rgba(234, 179, 8, 0.12);
+}
+
+.analysis-card-notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.analysis-note-item {
+  font-size: 0.85rem;
+  color: #cbd5e1;
+}
+
+.analysis-note-item strong {
+  color: #f1f5f9;
+}
+
+.analysis-card-intervals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.analysis-card-inversion {
+  font-size: 0.8rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.analysis-card-bass {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.analysis-card-bass strong {
+  color: #e5e7eb;
+}

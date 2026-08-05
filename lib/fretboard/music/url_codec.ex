@@ -206,6 +206,50 @@ defmodule Fretboard.Music.URLCodec do
     {instrument, tuning, chords, highlighted_index}
   end
 
+  @doc """
+  Decodes the `tab` query param into an atom (`:visualizer` or `:analyzer`).
+
+  Defaults to `:visualizer` when the param is missing or invalid.
+  """
+  @spec decode_tab(String.t() | nil) :: :visualizer | :analyzer
+  def decode_tab(nil), do: :visualizer
+  def decode_tab(""), do: :visualizer
+
+  def decode_tab(str) when str in ~w(visualizer analyzer) do
+    String.to_existing_atom(str)
+  end
+
+  def decode_tab(_), do: :visualizer
+
+  @doc """
+  Decodes the `marked` query param into a map of `string_index => fret`.
+
+  Returns an empty map when the param is missing or invalid.
+  """
+  @spec decode_marked_map(String.t() | nil) :: %{non_neg_integer() => non_neg_integer()}
+  def decode_marked_map(nil), do: %{}
+  def decode_marked_map(""), do: %{}
+
+  def decode_marked_map(str) do
+    str
+    |> decode_marked()
+    |> Map.new(fn {string, fret} -> {string, fret} end)
+  end
+
+  @doc """
+  Encodes a `marked` map (`string_index => fret`) into the comma-separated
+  string format used in the URL. Returns `nil` for an empty map.
+  """
+  @spec encode_marked_map(%{non_neg_integer() => non_neg_integer()}) :: String.t() | nil
+  def encode_marked_map(map) when map == %{}, do: nil
+
+  def encode_marked_map(map) do
+    map
+    |> Enum.sort_by(fn {string, _fret} -> string end)
+    |> Enum.map(fn {string, fret} -> "#{string}-#{fret}" end)
+    |> Enum.join(",")
+  end
+
   defp find_highlighted_index(nil, _chords), do: nil
 
   defp find_highlighted_index(label, chords) do
@@ -256,4 +300,41 @@ defmodule Fretboard.Music.URLCodec do
 
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
+
+  @doc """
+  Encodes a list of {string, fret} tuples into a comma-separated string.
+  Returns nil for an empty list.
+  """
+  @spec encode_marked([{non_neg_integer(), non_neg_integer()}]) :: String.t() | nil
+  def encode_marked([]), do: nil
+
+  def encode_marked(positions) do
+    positions
+    |> Enum.map_join(",", fn {string, fret} -> "#{string}-#{fret}" end)
+  end
+
+  @doc """
+  Decodes a comma-separated string of string-fret pairs into a list of {string, fret} tuples.
+  Returns [] for nil or empty string. Silently skips invalid entries.
+  """
+  @spec decode_marked(String.t() | nil) :: [{non_neg_integer(), non_neg_integer()}]
+  def decode_marked(nil), do: []
+  def decode_marked(""), do: []
+
+  def decode_marked(str) do
+    str
+    |> String.split(",", trim: true)
+    |> Enum.flat_map(fn pair ->
+      case String.split(pair, "-", parts: 2) do
+        [s, f] ->
+          case {Integer.parse(s), Integer.parse(f)} do
+            {{string, ""}, {fret, ""}} -> [{string, fret}]
+            _ -> []
+          end
+
+        _ ->
+          []
+      end
+    end)
+  end
 end

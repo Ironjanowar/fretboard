@@ -240,6 +240,66 @@ defmodule Fretboard.Music do
   @spec decode_params(map()) :: {atom(), [String.t()], [map()], non_neg_integer() | nil}
   def decode_params(params), do: URLCodec.decode_params(params)
 
+  @doc """
+  Decodes the `tab` query param into `:visualizer` or `:analyzer`.
+
+  Defaults to `:visualizer` when the param is missing or invalid.
+  """
+  @spec decode_tab(String.t() | nil) :: :visualizer | :analyzer
+  def decode_tab(value), do: URLCodec.decode_tab(value)
+
+  @doc """
+  Decodes the `marked` query param into a map of `string_index => fret`.
+
+  Returns an empty map when the param is missing or invalid.
+  """
+  @spec decode_marked(String.t() | nil) :: %{non_neg_integer() => non_neg_integer()}
+  def decode_marked(value), do: URLCodec.decode_marked_map(value)
+
+  @doc """
+  Encodes a `marked` map into the comma-separated URL format.
+
+  Returns `nil` for an empty map.
+  """
+  @spec encode_marked(%{non_neg_integer() => non_neg_integer()}) :: String.t() | nil
+  def encode_marked(map), do: URLCodec.encode_marked_map(map)
+
+  @doc """
+  Computes the note name for a given open-string note and fret.
+
+  Delegates to `Note.note_at/2`.
+  """
+  @spec note_at(String.t(), non_neg_integer()) :: String.t()
+  def note_at(open_note, fret), do: Note.note_at(open_note, fret)
+
+  @doc """
+  Returns the chromatic index (0-11) of a note name.
+  """
+  @spec note_index(String.t()) :: non_neg_integer()
+  def note_index(note), do: Note.note_index(note)
+
+  @doc """
+  Identifies possible chord interpretations for a collection of notes,
+  given a bass note, annotating each result with its inversion and a
+  slash-chord label.
+
+  Returns a list of result maps with `:root`, `:quality`, `:exact`,
+  `:notes`, `:intervals`, `:bass`, `:inversion`, and `:slash_label`.
+
+  Returns `[]` when fewer than 3 unique pitch classes are present.
+  """
+  @spec analyze_notes([String.t()], String.t()) :: [map()]
+  def analyze_notes(notes, bass_note), do: Chord.identify(notes, bass_note)
+
+  @doc """
+  Identifies possible chord interpretations for a collection of notes
+  without a bass note.
+
+  Returns `[]` when fewer than 3 unique pitch classes are present.
+  """
+  @spec analyze_notes([String.t()]) :: [map()]
+  def analyze_notes(notes), do: Chord.identify(notes)
+
   defp build_chord_lookup(active_chords) do
     Enum.reduce(active_chords, %{}, fn %{root: root, quality: quality}, acc ->
       label = Chord.chord_label(root, quality)
