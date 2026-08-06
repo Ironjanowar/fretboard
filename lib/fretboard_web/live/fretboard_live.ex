@@ -374,17 +374,6 @@ defmodule FretboardWeb.FretboardLive do
      push_url_patch(socket, socket.assigns.instrument, socket.assigns.tuning, active_chords, nil)}
   end
 
-  defp infer_chord_mode(active_chords) do
-    seventh_qualities =
-      MapSet.new([:"7", :maj7, :min7, :dim7, :m7b5, :min_maj7, :aug_maj7, :aug7])
-
-    if Enum.any?(active_chords, &MapSet.member?(seventh_qualities, &1.quality)) do
-      :seventh
-    else
-      :triad
-    end
-  end
-
   @impl true
   def handle_event("toggle_key_modes", _params, socket) do
     {:noreply, assign(socket, :show_key_modes, not socket.assigns.show_key_modes)}
@@ -464,6 +453,22 @@ defmodule FretboardWeb.FretboardLive do
   end
 
   @impl true
+  def handle_event("clear_all_chords", _params, socket) do
+    socket =
+      socket
+      |> assign(active_chords: [], highlighted_chord: nil)
+
+    {:noreply,
+     push_url_patch(
+       socket,
+       socket.assigns.instrument,
+       socket.assigns.tuning,
+       [],
+       nil
+     )}
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <div class="main-container">
@@ -478,6 +483,17 @@ defmodule FretboardWeb.FretboardLive do
       <.modals {assigns} />
     </div>
     """
+  end
+
+  defp infer_chord_mode(active_chords) do
+    seventh_qualities =
+      MapSet.new([:"7", :maj7, :min7, :dim7, :m7b5, :min_maj7, :aug_maj7, :aug7])
+
+    if Enum.any?(active_chords, &MapSet.member?(seventh_qualities, &1.quality)) do
+      :seventh
+    else
+      :triad
+    end
   end
 
   # ---------------------------------------------------------------------------
@@ -622,6 +638,13 @@ defmodule FretboardWeb.FretboardLive do
       chord_colors={@chord_colors}
       highlighted_chord={@highlighted_chord}
     />
+
+    <%!-- Clear button (only shown when there are active chords) --%>
+    <div :if={length(@active_chords) > 0} class="analyzer-results">
+      <button type="button" class="btn-clear" phx-click="clear_all_chords">
+        ✕ Clear chords
+      </button>
+    </div>
 
     <.chord_chips
       active_chords={@active_chords}

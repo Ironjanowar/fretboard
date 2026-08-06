@@ -1187,4 +1187,45 @@ defmodule FretboardWeb.FretboardLiveTest do
       refute html =~ "Bdim\""
     end
   end
+
+  describe "clear_all_chords" do
+    test "clear button is not shown when there are no active chords", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/")
+
+      refute html =~ "clear_all_chords"
+    end
+
+    test "clear button is shown when there are active chords", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/?chords=Cmaj")
+
+      assert html =~ "clear_all_chords"
+    end
+
+    test "clicking clear_all_chords removes all chord chips and note circles", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/?chords=Cmaj,Amin")
+
+      html = render_click(view, "clear_all_chords", %{})
+
+      refute html =~ "chord-chip"
+      refute html =~ "note-circle"
+    end
+
+    test "clicking clear_all_chords hides the button afterwards", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/?chords=Cmaj")
+
+      html = render_click(view, "clear_all_chords", %{})
+
+      refute html =~ "clear_all_chords"
+    end
+
+    test "clearing chords that had a highlighted chord resets the highlight", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/?chords=Cmaj,Amin")
+
+      view |> element("[phx-click=highlight_chord][phx-value-index='0']") |> render_click()
+      html = render_click(view, "clear_all_chords", %{})
+
+      refute html =~ "chord-chip"
+      refute html =~ "chord-chip--highlighted"
+    end
+  end
 end
