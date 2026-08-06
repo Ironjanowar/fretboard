@@ -236,14 +236,22 @@ defmodule Fretboard.Music.Chord do
     labeled = Enum.map(formula, &{&1, contextual_interval_label(&1, formula)})
 
     if has_seventh?(formula) do
-      labeled
-      |> Enum.sort_by(fn {interval, _label} ->
-        {@chord_member_rank[interval], interval}
-      end)
-      |> Enum.map(&elem(&1, 1))
+      sort_by_chord_member(labeled)
     else
-      Enum.map(labeled, &elem(&1, 1))
+      extract_labels(labeled)
     end
+  end
+
+  defp sort_by_chord_member(labeled) do
+    labeled
+    |> Enum.sort_by(fn {interval, _label} ->
+      {@chord_member_rank[interval], interval}
+    end)
+    |> extract_labels()
+  end
+
+  defp extract_labels(labeled) do
+    Enum.map(labeled, &elem(&1, 1))
   end
 
   defp contextual_interval_label(interval, formula) do
@@ -476,21 +484,7 @@ defmodule Fretboard.Music.Chord do
     exact = match_type == :exact
     incomplete = match_type == :incomplete
 
-    missing_intervals =
-      if incomplete do
-        formula
-        |> Enum.reject(&MapSet.member?(interval_set, &1))
-        |> Enum.map(&contextual_interval_label(&1, formula))
-      else
-        []
-      end
-
-    missing_semitones =
-      if incomplete do
-        formula |> Enum.reject(&MapSet.member?(interval_set, &1))
-      else
-        []
-      end
+    {missing_intervals, missing_semitones} = compute_missing(formula, interval_set, incomplete)
 
     %{
       root: root,
@@ -507,6 +501,14 @@ defmodule Fretboard.Music.Chord do
       _missing_priority: missing_priority(missing_semitones),
       _match_type: match_type
     }
+  end
+
+  defp compute_missing(_formula, _interval_set, false), do: {[], []}
+
+  defp compute_missing(formula, interval_set, true) do
+    missing_semitones = Enum.reject(formula, &MapSet.member?(interval_set, &1))
+    missing_intervals = Enum.map(missing_semitones, &contextual_interval_label(&1, formula))
+    {missing_intervals, missing_semitones}
   end
 
   # Priority ranking of missing intervals for sorting incomplete matches.
@@ -566,30 +568,37 @@ defmodule Fretboard.Music.Chord do
     bass_index = Note.note_index(bass_note)
 
     identify(notes)
-    |> Enum.map(fn result ->
-      root_index = Note.note_index(result.root)
-      bass_interval = rem(bass_index - root_index + 12, 12)
-      formula = formula(result.quality)
+    |> Enum.map(&annotate_with_bass(&1, bass_index, bass_note))
+  end
 
-      inversion =
-        if bass_interval in formula do
-          inversion_for_interval(bass_interval)
-        else
-          nil
-        end
+  defp annotate_with_bass(result, bass_index, bass_note) do
+    root_index = Note.note_index(result.root)
+    bass_interval = rem(bass_index - root_index + 12, 12)
+    formula = formula(result.quality)
+    inversion = bass_inversion(bass_interval, formula)
+    slash_label = slash_label(result.root, result.quality, bass_note, inversion)
 
-      slash_label =
-        if inversion == 0 or is_nil(inversion) do
-          chord_label(result.root, result.quality)
-        else
-          "#{chord_label(result.root, result.quality)}/#{bass_note}"
-        end
+    result
+    |> Map.put(:bass, bass_note)
+    |> Map.put(:inversion, inversion)
+    |> Map.put(:slash_label, slash_label)
+  end
 
-      result
-      |> Map.put(:bass, bass_note)
-      |> Map.put(:inversion, inversion)
-      |> Map.put(:slash_label, slash_label)
-    end)
+  defp bass_inversion(bass_interval, formula) do
+    if bass_interval in formula do
+      inversion_for_interval(bass_interval)
+    else
+      nil
+    end
+  end
+
+  defp slash_label(root, quality, _bass_note, inversion)
+       when inversion == 0 or is_nil(inversion) do
+    chord_label(root, quality)
+  end
+
+  defp slash_label(root, quality, bass_note, _inversion) do
+    "#{chord_label(root, quality)}/#{bass_note}"
   end
 
   defp inversion_for_interval(bass_interval) do

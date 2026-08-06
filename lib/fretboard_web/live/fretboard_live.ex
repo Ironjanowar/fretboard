@@ -43,40 +43,51 @@ defmodule FretboardWeb.FretboardLive do
 
   @impl true
   def mount(params, _session, socket) do
+    state = decode_socket_state(params)
+
+    {:ok,
+     assign(
+       socket,
+       Map.merge(state, %{
+         chord_form: %{"root" => "C", "quality" => "major"},
+         chord_colors: @chord_colors,
+         chromatic_notes: Note.chromatic_scale(),
+         show_tuning_modal: false,
+         show_key_modal: false,
+         key_tonic: "C",
+         key_scale_type: :major,
+         key_chord_mode: :triad,
+         show_key_modes: false,
+         show_progression_modal: false,
+         progression_id: :pop_i_v_vi_iv,
+         progression_tonic: "C",
+         key_suggestions: AsyncResult.loading(),
+         multi_key_suggestions: AsyncResult.loading()
+       })
+     )}
+  end
+
+  defp decode_socket_state(params) do
     {instrument, tuning, active_chords, highlighted_chord} = Music.decode_params(params)
     fretboard = Music.fretboard_data(tuning, active_chords)
     string_count = Music.instrument_strings(instrument)
     tab = Music.decode_tab(params["tab"])
     marked_notes = Music.decode_marked(params["marked"])
+    analysis = if tab == :analyzer, do: analyzer_state(marked_notes, tuning), else: nil
 
-    {:ok,
-     assign(socket,
-       instrument: instrument,
-       tuning: tuning,
-       active_chords: active_chords,
-       highlighted_chord: highlighted_chord,
-       fretboard: fretboard,
-       svg: svg_params(string_count),
-       chord_form: %{"root" => "C", "quality" => "major"},
-       chord_colors: @chord_colors,
-       chromatic_notes: Note.chromatic_scale(),
-       show_tuning_modal: false,
-       modal_tuning: tuning,
-       modal_preset: detect_preset(tuning, instrument),
-       show_key_modal: false,
-       key_tonic: "C",
-       key_scale_type: :major,
-       key_chord_mode: :triad,
-       show_key_modes: false,
-       show_progression_modal: false,
-       progression_id: :pop_i_v_vi_iv,
-       progression_tonic: "C",
-       key_suggestions: AsyncResult.loading(),
-       multi_key_suggestions: AsyncResult.loading(),
-       tab: tab,
-       marked_notes: marked_notes,
-       analysis: if(tab == :analyzer, do: analyzer_state(marked_notes, tuning), else: nil)
-     )}
+    %{
+      instrument: instrument,
+      tuning: tuning,
+      active_chords: active_chords,
+      highlighted_chord: highlighted_chord,
+      fretboard: fretboard,
+      svg: svg_params(string_count),
+      modal_tuning: tuning,
+      modal_preset: detect_preset(tuning, instrument),
+      tab: tab,
+      marked_notes: marked_notes,
+      analysis: analysis
+    }
   end
 
   defp svg_params(string_count) do
@@ -99,47 +110,29 @@ defmodule FretboardWeb.FretboardLive do
 
   @impl true
   def handle_params(params, _uri, socket) do
-    {instrument, tuning, active_chords, highlighted_chord} = Music.decode_params(params)
-    fretboard = Music.fretboard_data(tuning, active_chords)
-    string_count = Music.instrument_strings(instrument)
-    tab = Music.decode_tab(params["tab"])
-    marked_notes = Music.decode_marked(params["marked"])
-    analysis = if tab == :analyzer, do: analyzer_state(marked_notes, tuning), else: nil
-
-    chords = active_chords
+    state = decode_socket_state(params)
+    chords = state.active_chords
 
     {:noreply,
      socket
-     |> assign(
-       instrument: instrument,
-       tuning: tuning,
-       active_chords: active_chords,
-       highlighted_chord: highlighted_chord,
-       fretboard: fretboard,
-       svg: svg_params(string_count),
-       modal_tuning: tuning,
-       modal_preset: detect_preset(tuning, instrument),
-       show_key_modes: false,
-       tab: tab,
-       marked_notes: marked_notes,
-       analysis: analysis
-     )
+     |> assign(Map.put(state, :show_key_modes, false))
      |> assign_async(:key_suggestions, fn ->
        if length(chords) >= 2 do
          suggestions = Music.suggest_keys(chords)
-
-         multi =
-           if suggestions == [] and length(chords) >= 3 do
-             Music.suggest_multi_keys(chords)
-           else
-             []
-           end
-
+         multi = multi_key_suggestions(suggestions, chords)
          {:ok, %{key_suggestions: suggestions, multi_key_suggestions: multi}}
        else
          {:ok, %{key_suggestions: [], multi_key_suggestions: []}}
        end
      end)}
+  end
+
+  defp multi_key_suggestions(suggestions, chords) do
+    if suggestions == [] and length(chords) >= 3 do
+      Music.suggest_multi_keys(chords)
+    else
+      []
+    end
   end
 
   @impl true
@@ -474,420 +467,620 @@ defmodule FretboardWeb.FretboardLive do
   def render(assigns) do
     ~H"""
     <div class="main-container">
-      <%!-- Controls: Tab toggle + Tuning + (Visualizer-only: Key, Progressions, Chord form) --%>
-      <div class="controls-wrapper">
-        <div class="controls-row">
-          <%!-- Segmented tab toggle (FIRST element) --%>
-          <div class="tab-toggle" id="tab-toggle">
-            <button
-              type="button"
-              class={"tab-toggle-btn#{if @tab == :visualizer, do: " tab-toggle-btn--active", else: ""}"}
-              phx-click="toggle_tab"
-              phx-value-tab="visualizer"
-            >
-              Visualizer
-            </button>
-            <button
-              type="button"
-              class={"tab-toggle-btn#{if @tab == :analyzer, do: " tab-toggle-btn--active", else: ""}"}
-              phx-click="toggle_tab"
-              phx-value-tab="analyzer"
-            >
-              Analyzer
-            </button>
-          </div>
-
-          <button
-            type="button"
-            phx-click="open_tuning_modal"
-            class="btn btn-secondary"
-          >
-            🎸 Tuning
-          </button>
-          <form phx-change="change_instrument" id="instrument-form">
-            <select
-              id="instrument-select"
-              name="instrument"
-              class="form-select"
-            >
-              <%= for {value, label} <- Music.instruments() do %>
-                <option value={value} selected={@instrument == value}>
-                  {label}
-                </option>
-              <% end %>
-            </select>
-          </form>
-
-          <%!-- Visualizer-only controls --%>
-          <%= if @tab == :visualizer do %>
-            <button
-              type="button"
-              phx-click="open_key_modal"
-              class="btn btn-secondary"
-            >
-              🎵 Key
-            </button>
-            <button
-              type="button"
-              phx-click="open_progression_modal"
-              class="btn btn-secondary"
-            >
-              🎼 Progressions
-            </button>
-            <form
-              id="chord-form"
-              phx-change="validate_chord"
-              phx-submit="add_chord"
-              class="form-inline"
-            >
-              <select
-                id="root-select"
-                name="chord[root]"
-                class="form-select"
-              >
-                <%= for note <- Note.chromatic_scale() do %>
-                  <option value={note} selected={@chord_form["root"] == note}>{note}</option>
-                <% end %>
-              </select>
-              <select
-                id="quality-select"
-                name="chord[quality]"
-                class="form-select"
-              >
-                <%= for {group, qualities} <- Music.grouped_qualities() do %>
-                  <optgroup label={group}>
-                    <%= for q <- qualities do %>
-                      <option value={q} selected={@chord_form["quality"] == Atom.to_string(q)}>
-                        {Music.chord_label(q)}
-                      </option>
-                    <% end %>
-                  </optgroup>
-                <% end %>
-              </select>
-              <button
-                type="submit"
-                class="btn btn-primary"
-              >
-                Add
-              </button>
-            </form>
-          <% end %>
-        </div>
-      </div>
+      <.controls_bar {assigns} />
 
       <%= if @tab == :visualizer do %>
-        <%!-- Visualizer: standard fretboard with chord notes --%>
-        <.fretboard_svg
-          svg={@svg}
-          tuning={@tuning}
-          fretboard={@fretboard}
-          active_chords={@active_chords}
-          chord_colors={@chord_colors}
-          highlighted_chord={@highlighted_chord}
-        />
-
-        <%!-- Active chords chips --%>
-        <div class="chords-wrapper">
-          <%= for {chord, i} <- Enum.with_index(@active_chords) do %>
-            <div
-              class={"chord-chip#{if @highlighted_chord == i, do: " chord-chip--highlighted", else: ""}"}
-              style={"background-color: #{chord_color(i, @chord_colors)}"}
-              phx-click="highlight_chord"
-              phx-value-index={i}
-            >
-              <div class="chord-chip-header">
-                <span class="chord-chip-title">{Music.chord_label(chord.root, chord.quality)}</span>
-                <button
-                  type="button"
-                  phx-click="remove_chord"
-                  phx-value-index={i}
-                  class="chord-chip-remove"
-                >
-                  ×
-                </button>
-              </div>
-              <div class="chord-chip-intervals">
-                <%= for {note, interval} <- Music.notes_with_intervals(chord.root, chord.quality) do %>
-                  <div>{note} - {interval}</div>
-                <% end %>
-              </div>
-            </div>
-          <% end %>
-        </div>
-
-        <%!-- Key Suggestions --%>
-        <.async_result :let={key_suggestions} assign={@key_suggestions}>
-          <:loading>
-            <div
-              :if={length(@active_chords) >= 2}
-              class="key-suggestions-wrapper"
-              id="key-suggestions"
-            >
-              <label class="section-label" style="width:100%">Tonalidades compatibles</label>
-              <p class="key-suggestions-loading">Calculando...</p>
-            </div>
-          </:loading>
-          <:failed :let={_failure}>
-            <div
-              :if={length(@active_chords) >= 2}
-              class="key-suggestions-wrapper"
-              id="key-suggestions"
-            >
-              <label class="section-label" style="width:100%">Tonalidades compatibles</label>
-              <p class="text-muted">Error al calcular tonalidades.</p>
-            </div>
-          </:failed>
-          <div
-            :if={length(@active_chords) >= 2}
-            class="key-suggestions-wrapper"
-            id="key-suggestions"
-          >
-            <label class="section-label" style="width:100%">Tonalidades compatibles</label>
-
-            <%= if key_suggestions == [] do %>
-              <p class="text-muted">
-                No se encontraron tonalidades compatibles con estos acordes.
-              </p>
-            <% else %>
-              <%= for group <- group_key_suggestions(key_suggestions) do %>
-                <%= if group.collapsed? do %>
-                  <%!-- Grouped modal modes: show prominent as cards, others as expandable --%>
-                  <%= for s <- group.prominent do %>
-                    <div
-                      class="key-card"
-                      phx-click="apply_suggested_key"
-                      phx-value-tonic={s.tonic}
-                      phx-value-scale_type={s.scale_type}
-                    >
-                      <div class="key-card-header">
-                        <span class="key-card-title">
-                          {Music.scale_label(s.scale_type)} {s.tonic}
-                        </span>
-                        <span class="key-card-score">{s.score}/{s.total}</span>
-                      </div>
-                      <div class="key-card-chips">
-                        <%= for {dc, i} <- Enum.with_index(s.diatonic_chords) do %>
-                          <span
-                            class="key-card-chip"
-                            style={chord_color(i, @chord_colors) |> then(&"background-color: #{&1};")}
-                          >
-                            {Music.chord_label(dc.root, dc.quality)}
-                          </span>
-                        <% end %>
-                      </div>
-                      <div class="key-card-arrow">Ver tonalidad →</div>
-                    </div>
-                  <% end %>
-                  <%!-- Collapsed modes toggle --%>
-                  <div class="key-modes-row" style="width:100%">
-                    <button
-                      type="button"
-                      class="key-modes-toggle"
-                      phx-click="toggle_key_modes"
-                    >
-                      ▸ {length(group.others)} modos adicionales
-                    </button>
-                  </div>
-                  <%= if @show_key_modes do %>
-                    <div class="key-modes-expanded" style="width:100%">
-                      <%= for s <- group.others do %>
-                        <div
-                          class="key-card"
-                          phx-click="apply_suggested_key"
-                          phx-value-tonic={s.tonic}
-                          phx-value-scale_type={s.scale_type}
-                        >
-                          <div class="key-card-header">
-                            <span class="key-card-title">
-                              {Music.scale_label(s.scale_type)} {s.tonic}
-                            </span>
-                            <span class="key-card-score">{s.score}/{s.total}</span>
-                          </div>
-                          <div class="key-card-chips">
-                            <%= for {dc, i} <- Enum.with_index(s.diatonic_chords) do %>
-                              <span
-                                class="key-card-chip"
-                                style={
-                                  chord_color(i, @chord_colors) |> then(&"background-color: #{&1};")
-                                }
-                              >
-                                {Music.chord_label(dc.root, dc.quality)}
-                              </span>
-                            <% end %>
-                          </div>
-                          <div class="key-card-arrow">Ver tonalidad →</div>
-                        </div>
-                      <% end %>
-                    </div>
-                  <% end %>
-                <% else %>
-                  <%!-- Single (non-modal) suggestion as card --%>
-                  <div
-                    class="key-card"
-                    phx-click="apply_suggested_key"
-                    phx-value-tonic={group.item.tonic}
-                    phx-value-scale_type={group.item.scale_type}
-                  >
-                    <div class="key-card-header">
-                      <span class="key-card-title">
-                        {Music.scale_label(group.item.scale_type)} {group.item.tonic}
-                      </span>
-                      <span class={"key-card-score#{if group.item.score == group.item.total, do: "", else: " key-card-score--partial"}"}>
-                        {group.item.score}/{group.item.total}
-                      </span>
-                    </div>
-                    <div class="key-card-chips">
-                      <%= for {dc, i} <- Enum.with_index(group.item.diatonic_chords) do %>
-                        <span
-                          class="key-card-chip"
-                          style={chord_color(i, @chord_colors) |> then(&"background-color: #{&1};")}
-                        >
-                          {Music.chord_label(dc.root, dc.quality)}
-                        </span>
-                      <% end %>
-                    </div>
-                    <div class="key-card-arrow">Ver tonalidad →</div>
-                  </div>
-                <% end %>
-              <% end %>
-            <% end %>
-          </div>
-        </.async_result>
-
-        <%!-- Multi-Key Suggestions (only when no single key found) --%>
-        <.async_result :let={multi_key_suggestions} assign={@multi_key_suggestions}>
-          <:loading>
-            <div :if={length(@active_chords) >= 3} class="key-suggestions-wrapper">
-              <p class="key-suggestions-loading">Analizando tonalidades...</p>
-            </div>
-          </:loading>
-          <:failed>
-            <div :if={length(@active_chords) >= 3} class="key-suggestions-wrapper">
-              <p class="text-muted">Error al calcular tonalidades.</p>
-            </div>
-          </:failed>
-          <div
-            :if={multi_key_suggestions != [] and length(@active_chords) >= 3}
-            class="key-suggestions-wrapper"
-            id="multi-key-suggestions"
-          >
-            <label class="section-label" style="width:100%">
-              No hay una tonalidad común. Se encontraron {length(
-                Enum.filter(multi_key_suggestions, &(&1.key != nil))
-              )} tonalidades:
-            </label>
-
-            <%= for {group, i} <- Enum.with_index(multi_key_suggestions) do %>
-              <%= if group.key == nil do %>
-                <%!-- Unmatched chords --%>
-                <div class="multi-key-unmatched">
-                  <span class="multi-key-unmatched-label">Acordes sin tonalidad compatible:</span>
-                  <%= for chord <- group.chords do %>
-                    <span class="chord-chip chord-chip--unmatched">
-                      {Music.chord_label(chord.root, chord.quality)}
-                    </span>
-                  <% end %>
-                </div>
-              <% else %>
-                <%!-- Tonal group --%>
-                <div class="multi-key-group">
-                  <span class="multi-key-group-label">Tonalidad {i + 1}</span>
-                  <div
-                    class="key-card"
-                    phx-click="apply_suggested_key"
-                    phx-value-tonic={group.key.tonic}
-                    phx-value-scale_type={group.key.scale_type}
-                  >
-                    <div class="key-card-header">
-                      <span class="key-card-title">
-                        {Music.scale_label(group.key.scale_type)} {group.key.tonic}
-                      </span>
-                      <span class="key-card-score">{group.key.score}/{group.key.total}</span>
-                    </div>
-                    <div class="key-card-chips">
-                      <%= for {dc, j} <- Enum.with_index(group.key.diatonic_chords) do %>
-                        <span
-                          class="key-card-chip"
-                          style={chord_color(j, @chord_colors) |> then(&"background-color: #{&1};")}
-                        >
-                          {Music.chord_label(dc.root, dc.quality)}
-                        </span>
-                      <% end %>
-                    </div>
-                    <div class="key-card-arrow">Ver tonalidad →</div>
-                  </div>
-                  <div class="multi-key-your-chords">
-                    <span class="multi-key-your-chords-label">Tus acordes:</span>
-                    <%= for chord <- group.chords do %>
-                      <% chord_idx = Enum.find_index(@active_chords, &(&1 == chord)) %>
-                      <span
-                        class="key-card-chip"
-                        style={
-                          if chord_idx,
-                            do:
-                              chord_color(chord_idx, @chord_colors)
-                              |> then(&"background-color: #{&1};"),
-                            else: "background-color: #6b7280;"
-                        }
-                      >
-                        {Music.chord_label(chord.root, chord.quality)}
-                      </span>
-                    <% end %>
-                  </div>
-                </div>
-              <% end %>
-            <% end %>
-          </div>
-        </.async_result>
+        <.visualizer_tab {assigns} />
       <% else %>
-        <%!-- Analyzer tab: interactive fretboard + analysis results --%>
-        <.analyzer_fretboard_svg
-          svg={@svg}
-          tuning={@tuning}
-          marked_notes={@marked_notes}
-        />
+        <.analyzer_tab {assigns} />
+      <% end %>
 
-        <%!-- Clear button (only shown when there are marked notes) --%>
-        <div :if={map_size(@marked_notes) > 0} class="analyzer-results">
+      <.modals {assigns} />
+    </div>
+    """
+  end
+
+  # ---------------------------------------------------------------------------
+  # Controls bar (tab toggle, tuning, instrument, visualizer-only controls)
+  # ---------------------------------------------------------------------------
+
+  attr :tab, :atom, required: true
+  attr :instrument, :atom, required: true
+  attr :chord_form, :map, required: true
+
+  defp controls_bar(assigns) do
+    ~H"""
+    <div class="controls-wrapper">
+      <div class="controls-row">
+        <%!-- Segmented tab toggle (FIRST element) --%>
+        <div class="tab-toggle" id="tab-toggle">
           <button
             type="button"
-            class="btn-clear"
-            phx-click="clear_notes"
+            class={"tab-toggle-btn#{if @tab == :visualizer, do: " tab-toggle-btn--active", else: ""}"}
+            phx-click="toggle_tab"
+            phx-value-tab="visualizer"
           >
-            ✕ Clear notes
+            Visualizer
+          </button>
+          <button
+            type="button"
+            class={"tab-toggle-btn#{if @tab == :analyzer, do: " tab-toggle-btn--active", else: ""}"}
+            phx-click="toggle_tab"
+            phx-value-tab="analyzer"
+          >
+            Analyzer
           </button>
         </div>
 
-        <%!-- Analysis results --%>
-        <.analyzer_results analysis={@analysis} tuning={@tuning} />
-      <% end %>
+        <button
+          type="button"
+          phx-click="open_tuning_modal"
+          class="btn btn-secondary"
+        >
+          🎸 Tuning
+        </button>
+        <form phx-change="change_instrument" id="instrument-form">
+          <select
+            id="instrument-select"
+            name="instrument"
+            class="form-select"
+          >
+            <%= for {value, label} <- Music.instruments() do %>
+              <option value={value} selected={@instrument == value}>
+                {label}
+              </option>
+            <% end %>
+          </select>
+        </form>
 
-      <%!-- Tuning Modal (visible in both tabs) --%>
-      <.tuning_modal
-        show={@show_tuning_modal}
-        modal_preset={@modal_preset}
-        instrument={@instrument}
-        modal_tuning={@modal_tuning}
-        string_count={@svg.string_count}
-      />
-
-      <%!-- Key Modal (visualizer-only, but rendered for both — only shown when toggled) --%>
-      <.key_modal
-        show={@show_key_modal}
-        key_tonic={@key_tonic}
-        key_scale_type={@key_scale_type}
-        key_chord_mode={@key_chord_mode}
-        chord_colors={@chord_colors}
-      />
-
-      <%!-- Progression Modal (visualizer-only, but rendered for both — only shown when toggled) --%>
-      <.progression_modal
-        show={@show_progression_modal}
-        progression_id={@progression_id}
-        progression_tonic={@progression_tonic}
-        chord_colors={@chord_colors}
-      />
+        <.visualizer_controls :if={@tab == :visualizer} chord_form={@chord_form} />
+      </div>
     </div>
+    """
+  end
+
+  attr :chord_form, :map, required: true
+
+  defp visualizer_controls(assigns) do
+    ~H"""
+    <button
+      type="button"
+      phx-click="open_key_modal"
+      class="btn btn-secondary"
+    >
+      🎵 Key
+    </button>
+    <button
+      type="button"
+      phx-click="open_progression_modal"
+      class="btn btn-secondary"
+    >
+      🎼 Progressions
+    </button>
+    <form
+      id="chord-form"
+      phx-change="validate_chord"
+      phx-submit="add_chord"
+      class="form-inline"
+    >
+      <select
+        id="root-select"
+        name="chord[root]"
+        class="form-select"
+      >
+        <%= for note <- Note.chromatic_scale() do %>
+          <option value={note} selected={@chord_form["root"] == note}>{note}</option>
+        <% end %>
+      </select>
+      <select
+        id="quality-select"
+        name="chord[quality]"
+        class="form-select"
+      >
+        <%= for {group, qualities} <- Music.grouped_qualities() do %>
+          <optgroup label={group}>
+            <%= for q <- qualities do %>
+              <option value={q} selected={@chord_form["quality"] == Atom.to_string(q)}>
+                {Music.chord_label(q)}
+              </option>
+            <% end %>
+          </optgroup>
+        <% end %>
+      </select>
+      <button
+        type="submit"
+        class="btn btn-primary"
+      >
+        Add
+      </button>
+    </form>
+    """
+  end
+
+  # ---------------------------------------------------------------------------
+  # Visualizer tab
+  # ---------------------------------------------------------------------------
+
+  attr :svg, :map, required: true
+  attr :tuning, :list, required: true
+  attr :fretboard, :list, required: true
+  attr :active_chords, :list, required: true
+  attr :chord_colors, :list, required: true
+  attr :highlighted_chord, :any, default: nil
+  attr :key_suggestions, :any, required: true
+  attr :multi_key_suggestions, :any, required: true
+  attr :show_key_modes, :boolean, required: true
+
+  defp visualizer_tab(assigns) do
+    ~H"""
+    <%!-- Visualizer: standard fretboard with chord notes --%>
+    <.fretboard_svg
+      svg={@svg}
+      tuning={@tuning}
+      fretboard={@fretboard}
+      active_chords={@active_chords}
+      chord_colors={@chord_colors}
+      highlighted_chord={@highlighted_chord}
+    />
+
+    <.chord_chips
+      active_chords={@active_chords}
+      chord_colors={@chord_colors}
+      highlighted_chord={@highlighted_chord}
+    />
+
+    <.key_suggestions_section
+      active_chords={@active_chords}
+      key_suggestions={@key_suggestions}
+      chord_colors={@chord_colors}
+      show_key_modes={@show_key_modes}
+    />
+
+    <.multi_key_suggestions_section
+      active_chords={@active_chords}
+      multi_key_suggestions={@multi_key_suggestions}
+      chord_colors={@chord_colors}
+    />
+    """
+  end
+
+  # ---------------------------------------------------------------------------
+  # Chord chips
+  # ---------------------------------------------------------------------------
+
+  attr :active_chords, :list, required: true
+  attr :chord_colors, :list, required: true
+  attr :highlighted_chord, :any, default: nil
+
+  defp chord_chips(assigns) do
+    ~H"""
+    <div class="chords-wrapper">
+      <%= for {chord, i} <- Enum.with_index(@active_chords) do %>
+        <div
+          class={"chord-chip#{if @highlighted_chord == i, do: " chord-chip--highlighted", else: ""}"}
+          style={"background-color: #{chord_color(i, @chord_colors)}"}
+          phx-click="highlight_chord"
+          phx-value-index={i}
+        >
+          <div class="chord-chip-header">
+            <span class="chord-chip-title">{Music.chord_label(chord.root, chord.quality)}</span>
+            <button
+              type="button"
+              phx-click="remove_chord"
+              phx-value-index={i}
+              class="chord-chip-remove"
+            >
+              ×
+            </button>
+          </div>
+          <div class="chord-chip-intervals">
+            <%= for {note, interval} <- Music.notes_with_intervals(chord.root, chord.quality) do %>
+              <div>{note} - {interval}</div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+    """
+  end
+
+  # ---------------------------------------------------------------------------
+  # Key suggestions section
+  # ---------------------------------------------------------------------------
+
+  attr :active_chords, :list, required: true
+  attr :key_suggestions, :any, required: true
+  attr :chord_colors, :list, required: true
+  attr :show_key_modes, :boolean, required: true
+
+  defp key_suggestions_section(assigns) do
+    ~H"""
+    <.async_result :let={key_suggestions} assign={@key_suggestions}>
+      <:loading>
+        <div
+          :if={length(@active_chords) >= 2}
+          class="key-suggestions-wrapper"
+          id="key-suggestions"
+        >
+          <label class="section-label" style="width:100%">Tonalidades compatibles</label>
+          <p class="key-suggestions-loading">Calculando...</p>
+        </div>
+      </:loading>
+      <:failed :let={_failure}>
+        <div
+          :if={length(@active_chords) >= 2}
+          class="key-suggestions-wrapper"
+          id="key-suggestions"
+        >
+          <label class="section-label" style="width:100%">Tonalidades compatibles</label>
+          <p class="text-muted">Error al calcular tonalidades.</p>
+        </div>
+      </:failed>
+      <div
+        :if={length(@active_chords) >= 2}
+        class="key-suggestions-wrapper"
+        id="key-suggestions"
+      >
+        <label class="section-label" style="width:100%">Tonalidades compatibles</label>
+
+        <%= if key_suggestions == [] do %>
+          <p class="text-muted">
+            No se encontraron tonalidades compatibles con estos acordes.
+          </p>
+        <% else %>
+          <%= for group <- group_key_suggestions(key_suggestions) do %>
+            <.key_suggestion_group
+              group={group}
+              chord_colors={@chord_colors}
+              show_key_modes={@show_key_modes}
+            />
+          <% end %>
+        <% end %>
+      </div>
+    </.async_result>
+    """
+  end
+
+  attr :group, :map, required: true
+  attr :chord_colors, :list, required: true
+  attr :show_key_modes, :boolean, required: true
+
+  defp key_suggestion_group(assigns) do
+    ~H"""
+    <%= if @group.collapsed? do %>
+      <.collapsed_mode_group
+        group={@group}
+        chord_colors={@chord_colors}
+        show_key_modes={@show_key_modes}
+      />
+    <% else %>
+      <.single_mode_card
+        item={@group.item}
+        chord_colors={@chord_colors}
+      />
+    <% end %>
+    """
+  end
+
+  attr :group, :map, required: true
+  attr :chord_colors, :list, required: true
+  attr :show_key_modes, :boolean, required: true
+
+  defp collapsed_mode_group(assigns) do
+    ~H"""
+    <%!-- Grouped modal modes: show prominent as cards, others as expandable --%>
+    <%= for s <- @group.prominent do %>
+      <.key_card suggestion={s} chord_colors={@chord_colors} />
+    <% end %>
+    <%!-- Collapsed modes toggle --%>
+    <div class="key-modes-row" style="width:100%">
+      <button
+        type="button"
+        class="key-modes-toggle"
+        phx-click="toggle_key_modes"
+      >
+        ▸ {length(@group.others)} modos adicionales
+      </button>
+    </div>
+    <.expanded_modes
+      :if={@show_key_modes}
+      others={@group.others}
+      chord_colors={@chord_colors}
+    />
+    """
+  end
+
+  attr :others, :list, required: true
+  attr :chord_colors, :list, required: true
+
+  defp expanded_modes(assigns) do
+    ~H"""
+    <div class="key-modes-expanded" style="width:100%">
+      <%= for s <- @others do %>
+        <.key_card suggestion={s} chord_colors={@chord_colors} />
+      <% end %>
+    </div>
+    """
+  end
+
+  attr :item, :map, required: true
+  attr :chord_colors, :list, required: true
+
+  defp single_mode_card(assigns) do
+    ~H"""
+    <%!-- Single (non-modal) suggestion as card --%>
+    <div
+      class="key-card"
+      phx-click="apply_suggested_key"
+      phx-value-tonic={@item.tonic}
+      phx-value-scale_type={@item.scale_type}
+    >
+      <div class="key-card-header">
+        <span class="key-card-title">
+          {Music.scale_label(@item.scale_type)} {@item.tonic}
+        </span>
+        <span class={"key-card-score#{if @item.score == @item.total, do: "", else: " key-card-score--partial"}"}>
+          {@item.score}/{@item.total}
+        </span>
+      </div>
+      <div class="key-card-chips">
+        <%= for {dc, i} <- Enum.with_index(@item.diatonic_chords) do %>
+          <span
+            class="key-card-chip"
+            style={chord_color(i, @chord_colors) |> then(&"background-color: #{&1};")}
+          >
+            {Music.chord_label(dc.root, dc.quality)}
+          </span>
+        <% end %>
+      </div>
+      <div class="key-card-arrow">Ver tonalidad →</div>
+    </div>
+    """
+  end
+
+  attr :suggestion, :map, required: true
+  attr :chord_colors, :list, required: true
+
+  defp key_card(assigns) do
+    ~H"""
+    <div
+      class="key-card"
+      phx-click="apply_suggested_key"
+      phx-value-tonic={@suggestion.tonic}
+      phx-value-scale_type={@suggestion.scale_type}
+    >
+      <div class="key-card-header">
+        <span class="key-card-title">
+          {Music.scale_label(@suggestion.scale_type)} {@suggestion.tonic}
+        </span>
+        <span class="key-card-score">{@suggestion.score}/{@suggestion.total}</span>
+      </div>
+      <div class="key-card-chips">
+        <%= for {dc, i} <- Enum.with_index(@suggestion.diatonic_chords) do %>
+          <span
+            class="key-card-chip"
+            style={chord_color(i, @chord_colors) |> then(&"background-color: #{&1};")}
+          >
+            {Music.chord_label(dc.root, dc.quality)}
+          </span>
+        <% end %>
+      </div>
+      <div class="key-card-arrow">Ver tonalidad →</div>
+    </div>
+    """
+  end
+
+  # ---------------------------------------------------------------------------
+  # Multi-key suggestions section
+  # ---------------------------------------------------------------------------
+
+  attr :active_chords, :list, required: true
+  attr :multi_key_suggestions, :any, required: true
+  attr :chord_colors, :list, required: true
+
+  defp multi_key_suggestions_section(assigns) do
+    ~H"""
+    <%!-- Multi-Key Suggestions (only when no single key found) --%>
+    <.async_result :let={multi_key_suggestions} assign={@multi_key_suggestions}>
+      <:loading>
+        <div :if={length(@active_chords) >= 3} class="key-suggestions-wrapper">
+          <p class="key-suggestions-loading">Analizando tonalidades...</p>
+        </div>
+      </:loading>
+      <:failed>
+        <div :if={length(@active_chords) >= 3} class="key-suggestions-wrapper">
+          <p class="text-muted">Error al calcular tonalidades.</p>
+        </div>
+      </:failed>
+      <div
+        :if={multi_key_suggestions != [] and length(@active_chords) >= 3}
+        class="key-suggestions-wrapper"
+        id="multi-key-suggestions"
+      >
+        <label class="section-label" style="width:100%">
+          No hay una tonalidad común. Se encontraron {length(
+            Enum.filter(multi_key_suggestions, &(&1.key != nil))
+          )} tonalidades:
+        </label>
+
+        <%= for {group, i} <- Enum.with_index(multi_key_suggestions) do %>
+          <.multi_key_group
+            group={group}
+            index={i}
+            active_chords={@active_chords}
+            chord_colors={@chord_colors}
+          />
+        <% end %>
+      </div>
+    </.async_result>
+    """
+  end
+
+  attr :group, :map, required: true
+  attr :index, :integer, required: true
+  attr :active_chords, :list, required: true
+  attr :chord_colors, :list, required: true
+
+  defp multi_key_group(assigns) do
+    ~H"""
+    <%= if @group.key == nil do %>
+      <.unmatched_chords group={@group} />
+    <% else %>
+      <.tonal_group
+        group={@group}
+        index={@index}
+        active_chords={@active_chords}
+        chord_colors={@chord_colors}
+      />
+    <% end %>
+    """
+  end
+
+  attr :group, :map, required: true
+
+  defp unmatched_chords(assigns) do
+    ~H"""
+    <%!-- Unmatched chords --%>
+    <div class="multi-key-unmatched">
+      <span class="multi-key-unmatched-label">Acordes sin tonalidad compatible:</span>
+      <%= for chord <- @group.chords do %>
+        <span class="chord-chip chord-chip--unmatched">
+          {Music.chord_label(chord.root, chord.quality)}
+        </span>
+      <% end %>
+    </div>
+    """
+  end
+
+  attr :group, :map, required: true
+  attr :index, :integer, required: true
+  attr :active_chords, :list, required: true
+  attr :chord_colors, :list, required: true
+
+  defp tonal_group(assigns) do
+    ~H"""
+    <%!-- Tonal group --%>
+    <div class="multi-key-group">
+      <span class="multi-key-group-label">Tonalidad {@index + 1}</span>
+      <.key_card
+        suggestion={@group.key}
+        chord_colors={@chord_colors}
+      />
+      <div class="multi-key-your-chords">
+        <span class="multi-key-your-chords-label">Tus acordes:</span>
+        <%= for chord <- @group.chords do %>
+          <.your_chord_chip
+            chord={chord}
+            active_chords={@active_chords}
+            chord_colors={@chord_colors}
+          />
+        <% end %>
+      </div>
+    </div>
+    """
+  end
+
+  attr :chord, :map, required: true
+  attr :active_chords, :list, required: true
+  attr :chord_colors, :list, required: true
+
+  defp your_chord_chip(assigns) do
+    ~H"""
+    <% chord_idx = Enum.find_index(@active_chords, &(&1 == @chord)) %>
+    <span
+      class="key-card-chip"
+      style={your_chord_style(chord_idx, @chord_colors)}
+    >
+      {Music.chord_label(@chord.root, @chord.quality)}
+    </span>
+    """
+  end
+
+  defp your_chord_style(nil, _chord_colors), do: "background-color: #6b7280;"
+
+  defp your_chord_style(chord_idx, chord_colors) do
+    chord_color(chord_idx, chord_colors) |> then(&"background-color: #{&1};")
+  end
+
+  # ---------------------------------------------------------------------------
+  # Analyzer tab
+  # ---------------------------------------------------------------------------
+
+  attr :svg, :map, required: true
+  attr :tuning, :list, required: true
+  attr :marked_notes, :map, required: true
+  attr :analysis, :any, default: nil
+
+  defp analyzer_tab(assigns) do
+    ~H"""
+    <%!-- Analyzer tab: interactive fretboard + analysis results --%>
+    <.analyzer_fretboard_svg
+      svg={@svg}
+      tuning={@tuning}
+      marked_notes={@marked_notes}
+    />
+
+    <%!-- Clear button (only shown when there are marked notes) --%>
+    <div :if={map_size(@marked_notes) > 0} class="analyzer-results">
+      <button
+        type="button"
+        class="btn-clear"
+        phx-click="clear_notes"
+      >
+        ✕ Clear notes
+      </button>
+    </div>
+
+    <%!-- Analysis results --%>
+    <.analyzer_results analysis={@analysis} />
+    """
+  end
+
+  # ---------------------------------------------------------------------------
+  # Modals (rendered in both tabs, shown only when toggled)
+  # ---------------------------------------------------------------------------
+
+  attr :show_tuning_modal, :boolean, required: true
+  attr :modal_preset, :string, required: true
+  attr :instrument, :atom, required: true
+  attr :modal_tuning, :list, required: true
+  attr :svg, :map, required: true
+  attr :show_key_modal, :boolean, required: true
+  attr :key_tonic, :string, required: true
+  attr :key_scale_type, :atom, required: true
+  attr :key_chord_mode, :atom, required: true
+  attr :chord_colors, :list, required: true
+  attr :show_progression_modal, :boolean, required: true
+  attr :progression_id, :atom, required: true
+  attr :progression_tonic, :string, required: true
+
+  defp modals(assigns) do
+    ~H"""
+    <%!-- Tuning Modal (visible in both tabs) --%>
+    <.tuning_modal
+      show={@show_tuning_modal}
+      modal_preset={@modal_preset}
+      instrument={@instrument}
+      modal_tuning={@modal_tuning}
+      string_count={@svg.string_count}
+    />
+
+    <%!-- Key Modal (visualizer-only, but rendered for both — only shown when toggled) --%>
+    <.key_modal
+      show={@show_key_modal}
+      key_tonic={@key_tonic}
+      key_scale_type={@key_scale_type}
+      key_chord_mode={@key_chord_mode}
+      chord_colors={@chord_colors}
+    />
+
+    <%!-- Progression Modal (visualizer-only, but rendered for both — only shown when toggled) --%>
+    <.progression_modal
+      show={@show_progression_modal}
+      progression_id={@progression_id}
+      progression_tonic={@progression_tonic}
+      chord_colors={@chord_colors}
+    />
     """
   end
 
@@ -909,54 +1102,95 @@ defmodule FretboardWeb.FretboardLive do
   # ---------------------------------------------------------------------------
 
   attr :analysis, :any, default: nil
-  attr :tuning, :list, required: true
 
   defp analyzer_results(assigns) do
     ~H"""
     <div class="analyzer-results" id={"analyzer-results-#{analysis_key(@analysis)}"}>
-      <div :if={@analysis == {:empty} or @analysis == nil} class="analyzer-empty">
-        Pulsa notas en el diapasón para identificar un acorde
+      <.analysis_state analysis={@analysis} />
+    </div>
+    """
+  end
+
+  attr :analysis, :any, required: true
+
+  defp analysis_state(%{analysis: {:empty}} = assigns) do
+    ~H"""
+    <div class="analyzer-empty">
+      Pulsa notas en el diapasón para identificar un acorde
+    </div>
+    """
+  end
+
+  defp analysis_state(%{analysis: nil} = assigns) do
+    ~H"""
+    <div class="analyzer-empty">
+      Pulsa notas en el diapasón para identificar un acorde
+    </div>
+    """
+  end
+
+  defp analysis_state(%{analysis: {:single, _note}} = assigns) do
+    ~H"""
+    <div class="analyzer-single-note">
+      Nota: {@analysis |> elem(1)}
+    </div>
+    """
+  end
+
+  defp analysis_state(%{analysis: {:interval, _note_a, _note_b, _label}} = assigns) do
+    ~H"""
+    <div class="analyzer-interval">
+      Intervalo: {@analysis |> elem(1)}-{@analysis |> elem(2)} ({@analysis |> elem(3)})
+    </div>
+    """
+  end
+
+  defp analysis_state(%{analysis: {:chords, _notes, _bass, interpretations}} = assigns)
+       when interpretations == [] do
+    ~H"""
+    <div class="analyzer-empty">
+      No se encontró un acorde para estas notas.
+    </div>
+    """
+  end
+
+  defp analysis_state(%{analysis: {:chords, _notes, _bass, _interpretations}} = assigns) do
+    ~H"""
+    <%= for interp <- @analysis |> elem(3) do %>
+      <.analysis_card interp={interp} />
+    <% end %>
+    """
+  end
+
+  attr :interp, :map, required: true
+
+  defp analysis_card(assigns) do
+    ~H"""
+    <div class="analysis-card">
+      <div class="analysis-card-header">
+        <span class="analysis-card-title">{@interp.slash_label}</span>
+        <span class={"analysis-card-badge #{badge_class(@interp)}"}>
+          {badge_text(@interp)}
+        </span>
       </div>
-      <div :if={match?({:single, _}, @analysis)} class="analyzer-single-note">
-        Nota: {elem(@analysis, 1)}
-      </div>
-      <div :if={match?({:interval, _, _, _}, @analysis)} class="analyzer-interval">
-        Intervalo: {elem(@analysis, 1)}-{elem(@analysis, 2)} ({elem(@analysis, 3)})
-      </div>
-      <%= if match?({:chords, _, _, _}, @analysis) do %>
-        <% interpretations = elem(@analysis, 3) %>
-        <div :if={interpretations == []} class="analyzer-empty">
-          No se encontró un acorde para estas notas.
-        </div>
-        <%= for interp <- interpretations do %>
-          <div class="analysis-card">
-            <div class="analysis-card-header">
-              <span class="analysis-card-title">{interp.slash_label}</span>
-              <span class={"analysis-card-badge #{badge_class(interp)}"}>
-                {badge_text(interp)}
-              </span>
-            </div>
-            <div class="analysis-card-notes">
-              <%= for {note, interval} <- note_interval_pairs(interp) do %>
-                <span class={"analysis-note-item#{if missing?(interp, interval), do: " analysis-note-item--missing", else: ""}"}>
-                  <strong>{note}</strong>
-                </span>
-              <% end %>
-            </div>
-            <div class="analysis-card-intervals">
-              <%= for interval <- interp.intervals do %>
-                <span>{interval}</span>
-              <% end %>
-            </div>
-            <div :if={interp.inversion != nil} class="analysis-card-inversion">
-              {inversion_label(interp.inversion)}
-            </div>
-            <div class="analysis-card-bass">
-              <strong>Bass:</strong> {interp.bass}
-            </div>
-          </div>
+      <div class="analysis-card-notes">
+        <%= for {note, interval} <- note_interval_pairs(@interp) do %>
+          <span class={"analysis-note-item#{if missing?(@interp, interval), do: " analysis-note-item--missing", else: ""}"}>
+            <strong>{note}</strong>
+          </span>
         <% end %>
-      <% end %>
+      </div>
+      <div class="analysis-card-intervals">
+        <%= for interval <- @interp.intervals do %>
+          <span>{interval}</span>
+        <% end %>
+      </div>
+      <div :if={@interp.inversion != nil} class="analysis-card-inversion">
+        {inversion_label(@interp.inversion)}
+      </div>
+      <div class="analysis-card-bass">
+        <strong>Bass:</strong> {@interp.bass}
+      </div>
     </div>
     """
   end
@@ -1078,15 +1312,15 @@ defmodule FretboardWeb.FretboardLive do
   defp inversion_label(6), do: "6th inversion"
 
   defp push_url_patch(socket, instrument, tuning, active_chords, highlighted_chord) do
-    params =
-      instrument
-      |> Music.encode_params(tuning, active_chords, highlighted_chord)
-      |> maybe_put_tab(socket.assigns.tab)
-      |> maybe_put_marked(socket.assigns.marked_notes)
-
-    query = URI.encode_query(params)
-    path = if query == "", do: "/", else: "/?#{query}"
-    push_patch(socket, to: path)
+    push_analyzer_patch(
+      socket,
+      instrument,
+      tuning,
+      active_chords,
+      highlighted_chord,
+      socket.assigns.tab,
+      socket.assigns.marked_notes
+    )
   end
 
   # Pushes a URL patch that includes the `tab` and `marked` params in addition
@@ -1102,15 +1336,31 @@ defmodule FretboardWeb.FretboardLive do
          tab,
          marked_notes
        ) do
+    path =
+      build_patch_path(
+        instrument,
+        tuning,
+        active_chords,
+        highlighted_chord,
+        tab: tab,
+        marked: marked_notes
+      )
+
+    push_patch(socket, to: path)
+  end
+
+  defp build_patch_path(instrument, tuning, active_chords, highlighted_chord, opts) do
+    tab = Keyword.get(opts, :tab, :visualizer)
+    marked = Keyword.get(opts, :marked, %{})
+
     params =
       instrument
       |> Music.encode_params(tuning, active_chords, highlighted_chord)
       |> maybe_put_tab(tab)
-      |> maybe_put_marked(marked_notes)
+      |> maybe_put_marked(marked)
 
     query = URI.encode_query(params)
-    path = if query == "", do: "/", else: "/?#{query}"
-    push_patch(socket, to: path)
+    if query == "", do: "/", else: "/?#{query}"
   end
 
   defp maybe_put_tab(params, :visualizer), do: params

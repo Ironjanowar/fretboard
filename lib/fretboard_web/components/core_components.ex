@@ -61,10 +61,12 @@ defmodule FretboardWeb.CoreComponents do
   Translates an error message using gettext.
   """
   def translate_error({msg, opts}) do
-    if count = opts[:count] do
-      Gettext.dngettext(FretboardWeb.Gettext, "errors", msg, msg, count, opts)
-    else
-      Gettext.dgettext(FretboardWeb.Gettext, "errors", msg, opts)
+    case Keyword.fetch(opts, :count) do
+      {:ok, count} ->
+        Gettext.dngettext(FretboardWeb.Gettext, "errors", msg, msg, count, opts)
+
+      :error ->
+        Gettext.dgettext(FretboardWeb.Gettext, "errors", msg, opts)
     end
   end
 

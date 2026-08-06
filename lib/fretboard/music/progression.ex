@@ -1168,25 +1168,30 @@ defmodule Fretboard.Music.Progression do
     prog = progression(progression_id)
     diatonic = Scale.diatonic_chords(tonic, prog.key_mode)
 
-    Enum.map(prog.degrees, fn %{degree: deg, accidental: acc, quality: qual} ->
-      diatonic_chord = Enum.at(diatonic, deg - 1)
+    Enum.map(prog.degrees, &resolve_degree_chord(&1, Enum.at(diatonic, &1.degree - 1)))
+  end
 
-      root =
-        if acc != 0 do
-          Note.note_at(diatonic_chord.root, acc)
-        else
-          diatonic_chord.root
-        end
+  defp resolve_degree_chord(%{degree: deg, accidental: acc, quality: qual}, diatonic_chord) do
+    root = degree_root(diatonic_chord.root, acc)
+    quality = degree_quality(deg, acc, qual, diatonic_chord.quality)
+    %{root: root, quality: quality}
+  end
 
-      quality =
-        cond do
-          qual != nil -> qual
-          acc == 0 -> diatonic_chord.quality
-          true -> infer_altered_quality(deg, acc, diatonic_chord.quality)
-        end
+  defp degree_root(diatonic_root, 0), do: diatonic_root
 
-      %{root: root, quality: quality}
-    end)
+  defp degree_root(diatonic_root, accidental) do
+    Note.note_at(diatonic_root, accidental)
+  end
+
+  defp degree_quality(_degree, _accidental, explicit_quality, _diatonic_quality)
+       when not is_nil(explicit_quality) do
+    explicit_quality
+  end
+
+  defp degree_quality(_degree, 0, nil, diatonic_quality), do: diatonic_quality
+
+  defp degree_quality(degree, accidental, nil, diatonic_quality) do
+    infer_altered_quality(degree, accidental, diatonic_quality)
   end
 
   # Altered degrees flattened by one semitone in major-flavoured contexts

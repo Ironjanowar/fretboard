@@ -158,19 +158,19 @@ defmodule Fretboard.Music.URLCodec do
   """
   @spec encode_params(atom(), [String.t()], [map()], non_neg_integer() | nil) :: map()
   def encode_params(instrument, tuning, chords, highlighted_index) do
-    params =
-      %{}
-      |> maybe_put_instrument(instrument)
-      |> maybe_put("chords", encode_chords(chords))
-      |> maybe_put("tuning", encode_tuning(instrument, tuning))
+    %{}
+    |> maybe_put_instrument(instrument)
+    |> maybe_put("chords", encode_chords(chords))
+    |> maybe_put("tuning", encode_tuning(instrument, tuning))
+    |> add_highlight_param(chords, highlighted_index)
+  end
 
-    if highlighted_index != nil do
-      chord = Enum.at(chords, highlighted_index)
-      label = Chord.chord_label(chord.root, chord.quality)
-      Map.put(params, "highlight", label)
-    else
-      params
-    end
+  defp add_highlight_param(params, _chords, nil), do: params
+
+  defp add_highlight_param(params, chords, highlighted_index) do
+    chord = Enum.at(chords, highlighted_index)
+    label = Chord.chord_label(chord.root, chord.quality)
+    Map.put(params, "highlight", label)
   end
 
   @doc """
@@ -218,13 +218,16 @@ defmodule Fretboard.Music.URLCodec do
 
   def decode_tuning(str, instrument) do
     notes = String.split(str, ",", trim: true)
-    expected_count = Instrument.instrument_strings(instrument)
 
-    if length(notes) == expected_count and Enum.all?(notes, &MapSet.member?(@valid_notes, &1)) do
+    if valid_tuning?(notes, Instrument.instrument_strings(instrument)) do
       notes
     else
       Instrument.instrument_standard_tuning(instrument)
     end
+  end
+
+  defp valid_tuning?(notes, expected_count) do
+    length(notes) == expected_count and Enum.all?(notes, &MapSet.member?(@valid_notes, &1))
   end
 
   @doc """
@@ -303,32 +306,31 @@ defmodule Fretboard.Music.URLCodec do
   end
 
   defp parse_chord(str) do
-    case extract_root_and_label(str) do
-      {root, quality} when not is_nil(quality) ->
-        if MapSet.member?(@valid_notes, root), do: [%{root: root, quality: quality}], else: []
-
-      _ ->
-        []
+    case parse_root_and_quality(str) do
+      {root, quality} when not is_nil(quality) -> to_chord_if_valid(root, quality)
+      _ -> []
     end
   end
 
-  defp extract_root_and_label(str) do
-    # Try root with sharp first (2 chars), then single char
-    cond do
-      String.length(str) > 1 and String.at(str, 1) == "#" ->
-        root = String.slice(str, 0, 2)
-        label = String.slice(str, 2, String.length(str))
-        {root, @labels_to_quality[label]}
-
-      String.length(str) >= 1 ->
-        root = String.at(str, 0)
-        label = String.slice(str, 1, String.length(str))
-        {root, @labels_to_quality[label]}
-
-      true ->
-        {nil, nil}
+  defp to_chord_if_valid(root, quality) do
+    if MapSet.member?(@valid_notes, root) do
+      [%{root: root, quality: quality}]
+    else
+      []
     end
   end
+
+  defp parse_root_and_quality(<<root::binary-size(1), "#", rest::binary>>) do
+    {root <> "#", quality_from_label(rest)}
+  end
+
+  defp parse_root_and_quality(<<root::binary-size(1), rest::binary>>) do
+    {root, quality_from_label(rest)}
+  end
+
+  defp parse_root_and_quality(_), do: {nil, nil}
+
+  defp quality_from_label(label), do: Map.get(@labels_to_quality, label)
 
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
