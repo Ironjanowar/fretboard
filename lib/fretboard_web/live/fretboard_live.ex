@@ -916,24 +916,47 @@ defmodule FretboardWeb.FretboardLive do
   defp analyzer_results(assigns) do
     ~H"""
     <div class="analyzer-results" id={"analyzer-results-#{analysis_key(@analysis)}"}>
-      {case @analysis do
-        {:empty} ->
-          render_empty(%{})
-
-        {:single, note} ->
-          render_single_note(Map.put(assigns, :note, note))
-
-        {:interval, note_a, note_b, label} ->
-          render_interval(Map.merge(assigns, %{note_a: note_a, note_b: note_b, label: label}))
-
-        {:chords, notes, bass, interpretations} ->
-          render_chord_cards(
-            Map.merge(assigns, %{notes: notes, bass: bass, interpretations: interpretations})
-          )
-
-        nil ->
-          render_empty(%{})
-      end}
+      <div :if={@analysis == {:empty} or @analysis == nil} class="analyzer-empty">
+        Pulsa notas en el diapasón para identificar un acorde
+      </div>
+      <div :if={match?({:single, _}, @analysis)} class="analyzer-single-note">
+        Nota: {elem(@analysis, 1)}
+      </div>
+      <div :if={match?({:interval, _, _, _}, @analysis)} class="analyzer-interval">
+        Intervalo: {elem(@analysis, 1)}-{elem(@analysis, 2)} ({elem(@analysis, 3)})
+      </div>
+      <%= if match?({:chords, _, _, _}, @analysis) do %>
+        <% interpretations = elem(@analysis, 3) %>
+        <div :if={interpretations == []} class="analyzer-empty">
+          No se encontró un acorde para estas notas.
+        </div>
+        <%= for interp <- interpretations do %>
+          <div class="analysis-card">
+            <div class="analysis-card-header">
+              <span class="analysis-card-title">{interp.slash_label}</span>
+              <span class={"analysis-card-badge #{if interp.exact, do: "analysis-badge--exact", else: "analysis-badge--partial"}"}>
+                {if interp.exact, do: "exact", else: "partial"}
+              </span>
+            </div>
+            <div class="analysis-card-notes">
+              <%= for note <- interp.notes do %>
+                <span class="analysis-note-item"><strong>{note}</strong></span>
+              <% end %>
+            </div>
+            <div class="analysis-card-intervals">
+              <%= for interval <- interp.intervals do %>
+                <span>{interval}</span>
+              <% end %>
+            </div>
+            <div :if={interp.inversion != nil} class="analysis-card-inversion">
+              {inversion_label(interp.inversion)}
+            </div>
+            <div class="analysis-card-bass">
+              <strong>Bass:</strong> {interp.bass}
+            </div>
+          </div>
+        <% end %>
+      <% end %>
     </div>
     """
   end
