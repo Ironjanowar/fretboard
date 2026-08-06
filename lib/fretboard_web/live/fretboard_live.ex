@@ -1115,7 +1115,12 @@ defmodule FretboardWeb.FretboardLive do
   defp inversion_label(3), do: "3rd inversion"
 
   defp push_url_patch(socket, instrument, tuning, active_chords, highlighted_chord) do
-    params = Music.encode_params(instrument, tuning, active_chords, highlighted_chord)
+    params =
+      instrument
+      |> Music.encode_params(tuning, active_chords, highlighted_chord)
+      |> maybe_put_tab(socket.assigns.tab)
+      |> maybe_put_marked(socket.assigns.marked_notes)
+
     query = URI.encode_query(params)
     path = if query == "", do: "/", else: "/?#{query}"
     push_patch(socket, to: path)

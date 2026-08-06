@@ -204,6 +204,52 @@ defmodule FretboardWeb.AnalyzerLiveTest do
     end
   end
 
+  describe "tuning and instrument changes preserve tab" do
+    test "applying a tuning change preserves tab=analyzer", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/?tab=analyzer")
+
+      view |> element("[phx-click=open_tuning_modal]") |> render_click()
+      render_click(view, "select_preset", %{"preset" => "Drop D"})
+
+      html = render_click(view, "apply_tuning", %{})
+
+      # Should still be on the analyzer tab
+      assert html =~ "analyzer-fretboard"
+      refute html =~ "root-select"
+    end
+
+    test "applying a tuning change preserves tab=visualizer (no tab param)", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/")
+
+      view |> element("[phx-click=open_tuning_modal]") |> render_click()
+      render_click(view, "select_preset", %{"preset" => "Drop D"})
+
+      html = render_click(view, "apply_tuning", %{})
+
+      # Should still be on the visualizer tab
+      assert html =~ "root-select"
+      refute html =~ "analyzer-fretboard"
+    end
+
+    test "changing instrument preserves tab=analyzer", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/?tab=analyzer")
+
+      html = render_click(view, "change_instrument", %{"instrument" => "bass_4"})
+
+      assert html =~ "analyzer-fretboard"
+      refute html =~ "root-select"
+    end
+
+    test "adding a chord preserves tab=analyzer", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/?tab=analyzer")
+
+      html = render_click(view, "add_chord", %{"chord" => %{"root" => "C", "quality" => "major"}})
+
+      assert html =~ "analyzer-fretboard"
+      refute html =~ "root-select"
+    end
+  end
+
   describe "switching tabs clears marked notes" do
     test "switching from analyzer to visualizer clears marked notes", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/?tab=analyzer&marked=0-3,2-2")
