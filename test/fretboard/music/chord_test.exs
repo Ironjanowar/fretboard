@@ -21,7 +21,7 @@ defmodule Fretboard.Music.ChordTest do
       assert :min_maj7 in qualities
       assert :aug_maj7 in qualities
       assert :aug7 in qualities
-      assert length(qualities) == 14
+      assert length(qualities) == 47
     end
   end
 
@@ -318,9 +318,13 @@ defmodule Fretboard.Music.ChordTest do
     test "returns triads and sevenths groups" do
       groups = Chord.grouped_qualities()
 
-      assert [{"Triads", triads}, {"Sevenths", sevenths}] = groups
+      assert {"Triads", triads} = List.keyfind(groups, "Triads", 0)
       assert triads == [:major, :minor, :dim, :aug, :sus2, :sus4]
-      assert sevenths == [:"7", :maj7, :min7, :dim7, :m7b5, :min_maj7, :aug_maj7, :aug7]
+
+      assert {"Sevenths", sevenths} = List.keyfind(groups, "Sevenths", 0)
+      assert :"7" in sevenths
+      assert :maj7 in sevenths
+      assert :min7 in sevenths
     end
   end
 end

@@ -429,14 +429,12 @@ defmodule FretboardWeb.FretboardLive do
     current = Map.get(socket.assigns.marked_notes, string)
 
     new_marked =
-      cond do
-        current == fret ->
-          # Same position marked → toggle off
-          Map.delete(socket.assigns.marked_notes, string)
-
-        true ->
-          # Either no note on this string, or a different fret → set/replace
-          Map.put(socket.assigns.marked_notes, string, fret)
+      if current == fret do
+        # Same position marked → toggle off
+        Map.delete(socket.assigns.marked_notes, string)
+      else
+        # Either no note on this string, or a different fret → set/replace
+        Map.put(socket.assigns.marked_notes, string, fret)
       end
 
     # Pre-compute analysis here so the re-render triggered by push_patch
@@ -934,13 +932,15 @@ defmodule FretboardWeb.FretboardLive do
           <div class="analysis-card">
             <div class="analysis-card-header">
               <span class="analysis-card-title">{interp.slash_label}</span>
-              <span class={"analysis-card-badge #{if interp.exact, do: "analysis-badge--exact", else: "analysis-badge--partial"}"}>
-                {if interp.exact, do: "exact", else: "partial"}
+              <span class={"analysis-card-badge #{badge_class(interp)}"}>
+                {badge_text(interp)}
               </span>
             </div>
             <div class="analysis-card-notes">
-              <%= for note <- interp.notes do %>
-                <span class="analysis-note-item"><strong>{note}</strong></span>
+              <%= for {note, interval} <- note_interval_pairs(interp) do %>
+                <span class={"analysis-note-item#{if missing?(interp, interval), do: " analysis-note-item--missing", else: ""}"}>
+                  <strong>{note}</strong>
+                </span>
               <% end %>
             </div>
             <div class="analysis-card-intervals">
@@ -961,6 +961,24 @@ defmodule FretboardWeb.FretboardLive do
     """
   end
 
+  defp badge_class(%{exact: true}), do: "analysis-badge--exact"
+  defp badge_class(%{incomplete: true}), do: "analysis-badge--incomplete"
+  defp badge_class(_), do: "analysis-badge--partial"
+
+  defp badge_text(%{exact: true}), do: "exact"
+  defp badge_text(%{incomplete: true}), do: "incomplete"
+  defp badge_text(_), do: "partial"
+
+  defp note_interval_pairs(%{notes: notes, intervals: intervals}) do
+    Enum.zip(notes, intervals)
+  end
+
+  defp missing?(%{incomplete: true, missing_intervals: missing}, interval) do
+    interval in missing
+  end
+
+  defp missing?(_, _interval), do: false
+
   # Generates a unique key per analysis state so LiveView replaces
   # the entire container (old ID removed, new ID added) instead of
   # trying to diff incompatible HTML structures.
@@ -969,64 +987,6 @@ defmodule FretboardWeb.FretboardLive do
   defp analysis_key({:interval, a, b, _}), do: "interval-#{a}-#{b}"
   defp analysis_key({:chords, notes, _, _}), do: "chords-#{Enum.join(notes, "-")}"
   defp analysis_key(nil), do: "nil"
-
-  defp render_empty(assigns) do
-    ~H"""
-    <div class="analyzer-empty">
-      Pulsa notas en el diapasón para identificar un acorde
-    </div>
-    """
-  end
-
-  defp render_single_note(assigns) do
-    ~H"""
-    <div class="analyzer-single-note">
-      Nota: {@note}
-    </div>
-    """
-  end
-
-  defp render_interval(assigns) do
-    ~H"""
-    <div class="analyzer-interval">
-      Intervalo: {@note_a}-{@note_b} ({@label})
-    </div>
-    """
-  end
-
-  defp render_chord_cards(assigns) do
-    ~H"""
-    <div :if={@interpretations == []} class="analyzer-empty">
-      No se encontró un acorde para estas notas.
-    </div>
-    <%= for interp <- @interpretations do %>
-      <div class="analysis-card">
-        <div class="analysis-card-header">
-          <span class="analysis-card-title">{interp.slash_label}</span>
-          <span class={"analysis-card-badge #{if interp.exact, do: "analysis-badge--exact", else: "analysis-badge--partial"}"}>
-            {if interp.exact, do: "exact", else: "partial"}
-          </span>
-        </div>
-        <div class="analysis-card-notes">
-          <%= for note <- interp.notes do %>
-            <span class="analysis-note-item"><strong>{note}</strong></span>
-          <% end %>
-        </div>
-        <div class="analysis-card-intervals">
-          <%= for interval <- interp.intervals do %>
-            <span>{interval}</span>
-          <% end %>
-        </div>
-        <div :if={interp.inversion != nil} class="analysis-card-inversion">
-          {inversion_label(interp.inversion)}
-        </div>
-        <div class="analysis-card-bass">
-          <strong>Bass:</strong> {@bass}
-        </div>
-      </div>
-    <% end %>
-    """
-  end
 
   @doc """
   Computes the analysis state from the marked notes and tuning.
@@ -1113,6 +1073,9 @@ defmodule FretboardWeb.FretboardLive do
   defp inversion_label(1), do: "1st inversion"
   defp inversion_label(2), do: "2nd inversion"
   defp inversion_label(3), do: "3rd inversion"
+  defp inversion_label(4), do: "4th inversion"
+  defp inversion_label(5), do: "5th inversion"
+  defp inversion_label(6), do: "6th inversion"
 
   defp push_url_patch(socket, instrument, tuning, active_chords, highlighted_chord) do
     params =

@@ -11,9 +11,9 @@ defmodule Fretboard.MusicTest do
   end
 
   describe "available_qualities/0" do
-    test "delegates to Chord and returns all 14 qualities" do
+    test "delegates to Chord and returns all 47 qualities" do
       qualities = Music.available_qualities()
-      assert length(qualities) == 14
+      assert length(qualities) == 47
       assert :major in qualities
       assert :"7" in qualities
     end
@@ -22,8 +22,10 @@ defmodule Fretboard.MusicTest do
   describe "grouped_qualities/0" do
     test "returns triads and sevenths groups" do
       groups = Music.grouped_qualities()
-      assert [{"Triads", triads}, {"Sevenths", sevenths}] = groups
+      assert {"Triads", triads} = List.keyfind(groups, "Triads", 0)
       assert :major in triads
+
+      assert {"Sevenths", sevenths} = List.keyfind(groups, "Sevenths", 0)
       assert :"7" in sevenths
     end
   end

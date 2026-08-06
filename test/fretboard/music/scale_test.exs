@@ -1,8 +1,8 @@
 defmodule Fretboard.Music.ScaleTest do
   use ExUnit.Case, async: true
 
-  alias Fretboard.Music.Scale
   alias Fretboard.Music.Note
+  alias Fretboard.Music.Scale
 
   describe "available_scale_types/0" do
     test "returns all 15 scale types" do
@@ -410,14 +410,14 @@ defmodule Fretboard.Music.ScaleTest do
       results = Scale.suggest_keys([chord("C", :major)])
 
       # All returned results must contain C major's notes (C, E, G).
-      assert length(results) > 0
+      refute results == []
       assert Enum.all?(results, &(&1.score == 1 and &1.total == 1))
     end
 
     test "each result has correct structure with required keys" do
       results = Scale.suggest_keys([chord("C", :major), chord("G", :major)])
 
-      assert length(results) > 0
+      refute results == []
 
       for r <- results do
         assert Map.has_key?(r, :tonic)
@@ -562,7 +562,7 @@ defmodule Fretboard.Music.ScaleTest do
 
       # Should produce at least one group with a real key.
       real_groups = Enum.filter(results, &(&1.key != nil))
-      assert length(real_groups) >= 1
+      refute real_groups == []
 
       # Total groups with real keys must be <= 3.
       assert length(real_groups) <= 3

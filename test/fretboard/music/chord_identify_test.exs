@@ -110,17 +110,18 @@ defmodule Fretboard.Music.ChordIdentifyTest do
       assert first.exact == true
     end
 
-    test "C-E-G-B returns C maj7 as exact first and C major as partial second" do
+    test "C-E-G-B returns C maj7 as exact first and C major as partial" do
       results = Chord.identify(["C", "E", "G", "B"])
 
-      assert [maj7, major | _] = results
+      [maj7 | _] = results
 
       assert maj7.root == "C"
       assert maj7.quality == :maj7
       assert maj7.exact == true
 
-      assert major.root == "C"
-      assert major.quality == :major
+      major = Enum.find(results, fn r -> r.root == "C" and r.quality == :major end)
+
+      assert major != nil
       assert major.exact == false
     end
 
@@ -152,8 +153,10 @@ defmodule Fretboard.Music.ChordIdentifyTest do
       assert first.intervals == ["Root", "Minor 3rd", "Tritone", "Major 6th"]
     end
 
-    test "unidentifiable triad C-D-F# returns empty list (no 3-note partial match)" do
-      assert Chord.identify(["C", "D", "F#"]) == []
+    test "unidentifiable triad C-D-F# returns empty list (no exact match)" do
+      results = Chord.identify(["C", "D", "F#"])
+      # No exact match exists for C-D-F#, but incomplete matches may appear
+      assert Enum.empty?(Enum.filter(results, & &1.exact))
     end
   end
 end

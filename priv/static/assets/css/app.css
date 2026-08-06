@@ -716,6 +716,11 @@ body {
   background-color: rgba(234, 179, 8, 0.12);
 }
 
+.analysis-badge--incomplete {
+  color: #3b82f6;
+  background-color: rgba(59, 130, 246, 0.12);
+}
+
 .analysis-card-notes {
   display: flex;
   flex-wrap: wrap;

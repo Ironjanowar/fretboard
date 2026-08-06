@@ -21,7 +21,40 @@ defmodule Fretboard.Music.URLCodec do
     "m7b5" => :m7b5,
     "mMaj7" => :min_maj7,
     "augMaj7" => :aug_maj7,
-    "aug7" => :aug7
+    "aug7" => :aug7,
+    "6" => :maj6,
+    "m6" => :min6,
+    "add9" => :add9,
+    "madd9" => :m_add9,
+    "6/9" => :maj6_9,
+    "m6/9" => :min6_9,
+    "9" => :"9",
+    "maj9" => :maj9,
+    "m9" => :min9,
+    "7b9" => :"7b9",
+    "7#9" => :"7#9",
+    "9#5" => :"9#5",
+    "9b5" => :"9b5",
+    "7b5" => :"7b5",
+    "7sus" => :"7sus4",
+    "dimMaj7" => :dim_maj7,
+    "maj7#11" => :"maj7#11",
+    "7#11" => :"7#11",
+    "7b13" => :"7b13",
+    "7b9b13" => :"7b9b13",
+    "11" => :"11",
+    "maj11" => :maj11,
+    "m11" => :min11,
+    "m11b5" => :m11b5,
+    "13" => :"13",
+    "maj13" => :maj13,
+    "m13" => :min13,
+    "13b9" => :"13b9",
+    "sus9" => :sus9,
+    "susb9" => :susb9,
+    "sus13" => :sus13,
+    "m7b13" => :min7b13,
+    "dim7b13" => :dim7b13
   }
 
   @valid_notes MapSet.new(Note.chromatic_scale())
@@ -246,8 +279,7 @@ defmodule Fretboard.Music.URLCodec do
   def encode_marked_map(map) do
     map
     |> Enum.sort_by(fn {string, _fret} -> string end)
-    |> Enum.map(fn {string, fret} -> "#{string}-#{fret}" end)
-    |> Enum.join(",")
+    |> Enum.map_join(",", fn {string, fret} -> "#{string}-#{fret}" end)
   end
 
   defp find_highlighted_index(nil, _chords), do: nil
@@ -324,17 +356,22 @@ defmodule Fretboard.Music.URLCodec do
   def decode_marked(str) do
     str
     |> String.split(",", trim: true)
-    |> Enum.flat_map(fn pair ->
-      case String.split(pair, "-", parts: 2) do
-        [s, f] ->
-          case {Integer.parse(s), Integer.parse(f)} do
-            {{string, ""}, {fret, ""}} -> [{string, fret}]
-            _ -> []
-          end
+    |> Enum.flat_map(&parse_marked_pair/1)
+  end
 
-        _ ->
-          []
-      end
-    end)
+  defp parse_marked_pair(pair) do
+    case String.split(pair, "-", parts: 2) do
+      [s, f] -> parse_marked_integers(s, f)
+      _ -> []
+    end
+  end
+
+  defp parse_marked_integers(s, f) do
+    with {string, ""} <- Integer.parse(s),
+         {fret, ""} <- Integer.parse(f) do
+      [{string, fret}]
+    else
+      _ -> []
+    end
   end
 end

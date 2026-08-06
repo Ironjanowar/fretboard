@@ -235,18 +235,68 @@ defmodule Fretboard.Music.Scale do
   @spec scale_label(atom()) :: String.t()
   def scale_label(scale_type), do: Map.fetch!(@labels, scale_type)
 
-  # Mapping from 7th-chord qualities to their triad base quality,
-  # used by `suggest_keys/1` to compare input 7th chords against
-  # the diatonic triad chords of a candidate key.
-  @seventh_to_triad %{
-    :maj7 => :major,
-    :"7" => :major,
-    :min7 => :minor,
-    :dim7 => :dim,
-    :m7b5 => :dim,
-    :min_maj7 => :minor,
-    :aug_maj7 => :aug,
-    :aug7 => :aug
+  # Mapping from chord qualities to their triad base quality,
+  # used by `suggest_keys/1` to compare input chords against
+  # the diatonic triad chords of a candidate key. Each quality is
+  # mapped by its 3rd/5th base (major/minor/dim/aug).
+  @quality_to_triad %{
+    # Triads map to themselves
+    major: :major,
+    minor: :minor,
+    dim: :dim,
+    aug: :aug,
+    sus2: :sus2,
+    sus4: :sus4,
+    # Sevenths
+    maj7: :major,
+    "7": :major,
+    min7: :minor,
+    dim7: :dim,
+    m7b5: :dim,
+    min_maj7: :minor,
+    aug_maj7: :aug,
+    aug7: :aug,
+    "7sus4": :sus4,
+    dim_maj7: :dim,
+    # Sixths
+    maj6: :major,
+    min6: :minor,
+    maj6_9: :major,
+    min6_9: :minor,
+    # Added tones
+    add9: :major,
+    m_add9: :minor,
+    # Ninths
+    "9": :major,
+    maj9: :major,
+    min9: :minor,
+    "7b9": :major,
+    "7#9": :major,
+    "9#5": :aug,
+    "9b5": :dim,
+    "7b5": :dim,
+    # 7th alterations
+    "maj7#11": :major,
+    "7#11": :major,
+    "7b13": :major,
+    "7b9b13": :major,
+    # 11ths
+    "11": :major,
+    maj11: :major,
+    min11: :minor,
+    m11b5: :dim,
+    # 13ths
+    "13": :major,
+    maj13: :major,
+    min13: :minor,
+    "13b9": :major,
+    # Suspended extended
+    sus9: :sus2,
+    susb9: :sus2,
+    sus13: :sus4,
+    # Minor/dim variations
+    min7b13: :minor,
+    dim7b13: :dim
   }
 
   @triad_qualities MapSet.new([:major, :minor, :dim, :aug, :sus2, :sus4])
@@ -258,7 +308,7 @@ defmodule Fretboard.Music.Scale do
 
   Each chord is a map with `:root` (e.g. `"C"`) and `:quality` (e.g.
   `:major`, `:min7`). 7th-chord qualities are mapped to their triad base
-  via `@seventh_to_triad` before comparison against the diatonic triads.
+  via `@quality_to_triad` before comparison against the diatonic triads.
 
   Returns a list of maps sorted by score descending, then tonic ascending,
   then scale_type ascending. Each map has:
@@ -321,7 +371,7 @@ defmodule Fretboard.Music.Scale do
     if MapSet.member?(@triad_qualities, quality) do
       quality
     else
-      Map.fetch!(@seventh_to_triad, quality)
+      Map.fetch!(@quality_to_triad, quality)
     end
   end
 
