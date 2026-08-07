@@ -72,7 +72,12 @@ defmodule FretboardWeb.FretboardLive do
     fretboard = Music.fretboard_data(tuning, active_chords)
     string_count = Music.instrument_strings(instrument)
     tab = Music.decode_tab(params["tab"])
-    marked_notes = Music.decode_marked(params["marked"])
+
+    marked_notes =
+      params["marked"]
+      |> Music.decode_marked()
+      |> Music.filter_marked_notes(string_count)
+
     analysis = if tab == :analyzer, do: analyzer_state(marked_notes, tuning), else: nil
 
     %{
@@ -354,14 +359,18 @@ defmodule FretboardWeb.FretboardLive do
   def handle_event("change_instrument", %{"instrument" => instrument_str}, socket) do
     new_instrument = String.to_existing_atom(instrument_str)
     new_tuning = Music.instrument_standard_tuning(new_instrument)
+    new_string_count = Music.instrument_strings(new_instrument)
+    filtered_marked = Music.filter_marked_notes(socket.assigns.marked_notes, new_string_count)
 
     {:noreply,
-     push_url_patch(
+     push_analyzer_patch(
        socket,
        new_instrument,
        new_tuning,
        socket.assigns.active_chords,
-       nil
+       nil,
+       socket.assigns.tab,
+       filtered_marked
      )}
   end
 
@@ -386,9 +395,9 @@ defmodule FretboardWeb.FretboardLive do
     if target_tab == socket.assigns.tab do
       {:noreply, socket}
     else
-      # Switching to analyzer clears marked notes; switching to visualizer
-      # also clears them (per spec — marked notes are analyzer-only state).
-      marked_notes = %{}
+      # Preserve marked notes across tab switches so the analyzer state
+      # survives round-trips through the visualizer (encoded in the URL).
+      marked_notes = socket.assigns.marked_notes
 
       {:noreply,
        push_analyzer_patch(

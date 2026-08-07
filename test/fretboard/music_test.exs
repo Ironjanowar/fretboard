@@ -347,4 +347,43 @@ defmodule Fretboard.MusicTest do
       assert Music.suggest_multi_keys(chords) == Scale.suggest_multi_keys(chords)
     end
   end
+
+  describe "filter_marked_notes/2" do
+    test "filter_marked_notes returns empty map for empty input" do
+      assert Music.filter_marked_notes(%{}, 6) == %{}
+    end
+
+    test "filter_marked_notes returns the same map when all strings are within string_count" do
+      marked = %{0 => 3, 1 => 5, 2 => 7, 3 => 9, 4 => 12, 5 => 24}
+
+      assert Music.filter_marked_notes(marked, 6) == marked
+    end
+
+    test "filter_marked_notes filters out entries with string index >= string_count" do
+      marked = %{0 => 3, 4 => 12, 5 => 24}
+
+      # string_count of 4 keeps only strings 0-3
+      assert Music.filter_marked_notes(marked, 4) == %{0 => 3}
+    end
+
+    test "filter_marked_notes keeps entries with string index 0 (boundary)" do
+      marked = %{0 => 3}
+
+      assert Music.filter_marked_notes(marked, 4) == %{0 => 3}
+    end
+
+    test "filter_marked_notes filters out entries with string index == string_count (boundary)" do
+      # string index 4 equals string_count 4, so it should be excluded
+      marked = %{3 => 9, 4 => 12}
+
+      assert Music.filter_marked_notes(marked, 4) == %{3 => 9}
+    end
+
+    test "filter_marked_notes works with mixed valid and invalid entries" do
+      # Guitar has 6 strings (indices 0-5); bass_4 has 4 strings (indices 0-3)
+      marked = %{0 => 3, 3 => 9, 4 => 12, 5 => 24}
+
+      assert Music.filter_marked_notes(marked, 4) == %{0 => 3, 3 => 9}
+    end
+  end
 end

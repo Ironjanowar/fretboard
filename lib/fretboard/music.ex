@@ -265,6 +265,19 @@ defmodule Fretboard.Music do
   def encode_marked(map), do: URLCodec.encode_marked_map(map)
 
   @doc """
+  Filters marked notes to keep only entries whose string index is valid
+  for the given string count.
+
+  A string index is valid when it is strictly less than `string_count`
+  (string indices are zero-based, so a 4-string instrument accepts 0-3).
+  """
+  @spec filter_marked_notes(%{non_neg_integer() => non_neg_integer()}, pos_integer()) ::
+          %{non_neg_integer() => non_neg_integer()}
+  def filter_marked_notes(marked_notes, string_count) do
+    Map.filter(marked_notes, fn {string, _fret} -> string < string_count end)
+  end
+
+  @doc """
   Computes the note name for a given open-string note and fret.
 
   Delegates to `Note.note_at/2`.

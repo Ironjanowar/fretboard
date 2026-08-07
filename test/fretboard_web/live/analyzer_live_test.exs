@@ -250,31 +250,76 @@ defmodule FretboardWeb.AnalyzerLiveTest do
     end
   end
 
-  describe "switching tabs clears marked notes" do
-    test "switching from analyzer to visualizer clears marked notes", %{conn: conn} do
+  describe "switching tabs preserves marked notes" do
+    test "switching from analyzer to visualizer preserves marked notes in URL", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/?tab=analyzer&marked=0-3,2-2")
 
       # Switch to visualizer
-      html =
-        view
-        |> element("[phx-click=toggle_tab][phx-value-tab=visualizer]")
-        |> render_click()
+      view
+      |> element("[phx-click=toggle_tab][phx-value-tab=visualizer]")
+      |> render_click()
 
-      refute html =~ "analyzer-fretboard"
-      refute html =~ "analyzer-note-circle"
+      # The marked param should still be present in the URL after the patch.
+      uri = view |> assert_patch() |> URI.parse()
+      query = uri.query || ""
+      marked_param = URI.decode_query(query) |> Map.get("marked")
+
+      assert marked_param != nil,
+             "expected the marked param to be preserved in the URL when switching to visualizer"
+
+      assert marked_param =~ "0-3", "expected marked note 0-3 to be preserved in the URL"
+      assert marked_param =~ "2-2", "expected marked note 2-2 to be preserved in the URL"
     end
 
-    test "switching from visualizer to analyzer clears marked notes", %{conn: conn} do
+    test "switching from visualizer to analyzer preserves marked notes", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/?tab=visualizer&marked=0-3")
 
+      # Switch to analyzer
       html =
         view
         |> element("[phx-click=toggle_tab][phx-value-tab=analyzer]")
         |> render_click()
 
-      # Should show the empty state, not marked notes
-      assert html =~ "Pulsa notas en el diapasón para identificar un acorde"
-      refute html =~ "analyzer-note-circle"
+      # The marked notes should still be present when switching back to analyzer,
+      # so the analysis should render rather than the empty state.
+      assert html =~ "analyzer-note-circle",
+             "expected marked note circle to render when switching back to analyzer"
+
+      refute html =~ "Pulsa notas en el diapasón para identificar un acorde",
+             "expected the empty state to be replaced by marked-note analysis"
+    end
+
+    test "switching from analyzer to visualizer and back to analyzer restores marked notes", %{
+      conn: conn
+    } do
+      {:ok, view, _html} = live(conn, "/?tab=analyzer&marked=0-3,2-2")
+
+      # Switch to visualizer (notes should be in the URL but not rendered)
+      view
+      |> element("[phx-click=toggle_tab][phx-value-tab=visualizer]")
+      |> render_click()
+
+      uri = view |> assert_patch() |> URI.parse()
+      query = uri.query || ""
+      marked_param = URI.decode_query(query) |> Map.get("marked")
+      assert marked_param =~ "0-3", "expected marked notes to survive the trip to visualizer"
+
+      # Switch back to analyzer (notes should render again)
+      html =
+        view
+        |> element("[phx-click=toggle_tab][phx-value-tab=analyzer]")
+        |> render_click()
+
+      # Both marked notes should be rendered again on the analyzer fretboard.
+      assert html =~ "analyzer-note-circle",
+             "expected marked note circles to render after returning to analyzer"
+
+      # Two notes produce an interval display, not the empty state.
+      assert html =~ "analyzer-interval",
+             "expected the interval display to render after restoring marked notes"
+
+      refute html =~ "Pulsa notas en el diapasón para identificar un acorde",
+             "expected no empty state when marked notes are restored"
     end
   end
 

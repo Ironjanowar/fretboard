@@ -1228,4 +1228,71 @@ defmodule FretboardWeb.FretboardLiveTest do
       refute html =~ "chord-chip--highlighted"
     end
   end
+
+  describe "change_instrument with analyzer marked notes" do
+    # Regression test: switching from guitar (6 strings) to bass_4 (4 strings)
+    # while the analyzer tab has marked notes on strings 4 and 5 (valid for
+    # guitar but out of range for bass) used to crash the page with an
+    # ArithmeticError, because `Enum.at(tuning, string)` returns nil for
+    # string indices beyond the bass tuning length and then `note_at(nil,
+    # fret)` crashes. The fix filters marked notes to those whose string
+    # index is within the new instrument's string count before patching the
+    # URL.
+
+    test "switching from guitar to bass_4 does not crash when marked notes are on strings 4 and 5",
+         %{conn: conn} do
+      # Mount on the analyzer tab with notes marked on strings 4 and 5
+      # (valid indices for a 6-string guitar tuning).
+      {:ok, view, _html} = live(conn, "/?tab=analyzer&marked=4-12,5-24")
+
+      # Switching to bass_4 (4 strings) must not crash. The view should
+      # respond successfully — the out-of-range marked notes get filtered.
+      html = render_click(view, "change_instrument", %{"instrument" => "bass_4"})
+
+      # After the switch the fretboard should show 4 strings.
+      assert length(Regex.scan(~r/class="string-line"/, html)) == 4
+    end
+
+    test "switching from guitar to bass_4 filters out marked notes on invalid strings",
+         %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/?tab=analyzer&marked=4-12,5-24")
+
+      render_click(view, "change_instrument", %{"instrument" => "bass_4"})
+
+      # The URL patch should no longer carry marked notes on strings >= 4,
+      # because those indices are out of range for bass_4.
+      uri = view |> assert_patch() |> URI.parse()
+      query = uri.query || ""
+
+      marked_param = URI.decode_query(query) |> Map.get("marked")
+
+      if marked_param do
+        marked_strings =
+          marked_param
+          |> String.split(",", trim: true)
+          |> Enum.map(fn pair ->
+            [s, _f] = String.split(pair, "-", parts: 2)
+            String.to_integer(s)
+          end)
+
+        # No remaining marked note should reference a string index >= 4
+        refute Enum.any?(marked_strings, &(&1 >= 4)),
+               "expected no marked notes on strings >= 4 for bass_4, got: #{marked_param}"
+      end
+    end
+
+    test "switching from guitar to bass_4 keeps marked notes on valid strings", %{conn: conn} do
+      # Mark notes on strings 1 (valid for bass_4) and 5 (invalid for bass_4)
+      {:ok, view, _html} = live(conn, "/?tab=analyzer&marked=1-5,5-24")
+
+      render_click(view, "change_instrument", %{"instrument" => "bass_4"})
+
+      uri = view |> assert_patch() |> URI.parse()
+      query = uri.query || ""
+      marked_param = URI.decode_query(query) |> Map.get("marked")
+
+      assert marked_param != nil, "expected the marked param to be preserved for string 1"
+      assert marked_param =~ "1-5", "expected marked note on string 1 to be kept"
+    end
+  end
 end
