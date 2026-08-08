@@ -10,7 +10,7 @@ defmodule Fretboard.Music.Progression do
     - `accidental` is an integer in [-2, 2] — semitone offset from the diatonic root
       (-1 flattens, +1 sharpens, 0 is the diatonic note)
     - `quality` is `nil` (use diatonic quality) or an explicit quality atom
-  - `:key_mode` — `:major` or `:minor`
+  - `:scale_type` — any scale type atom (e.g. `:major`, `:minor`, `:phrygian_dominant`, `:dorian`, `:lydian`, etc.)
   - `:genre` — musical genre/tradition
   - `:description` — brief explanation
   - `:example_key` — a key to use as example (e.g., "C")
@@ -24,6 +24,14 @@ defmodule Fretboard.Music.Progression do
   flatten them a second time (e.g. degree 7 in A minor is G; flattening again
   would give G♭, which is wrong). Use `accidental: -1` on degrees 3, 6, 7 only
   in `:major`-key progressions, where it denotes modal interchange (♭III, ♭VI, ♭VII).
+
+  ## Accidentals in phrygian dominant
+
+  The phrygian dominant scale (`[0, 1, 4, 5, 7, 8, 10]`) has a major 3rd and a
+  minor 2nd built in. Degree 2 is already ♭II (1 semitone from the root), so it
+  needs `accidental: 0` — an extra `accidental: -1` would flatten it again. Degree
+  3 is a major 3rd (e.g. G♯ in E), so to reach the ♭III chord it needs
+  `accidental: -1`. The tonic is major.
   """
 
   alias Fretboard.Music.{Note, Scale}
@@ -47,7 +55,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 6, accidental: 0, quality: nil},
         %{degree: 4, accidental: 0, quality: nil}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Pop, pop-punk, rock",
       description: "The 'Axis of Awesome' progression — used in countless pop hits",
       example_key: "C",
@@ -68,7 +76,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 4, accidental: 0, quality: nil},
         %{degree: 5, accidental: 0, quality: nil}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Rock, blues, country, folk",
       description: "The foundational three-chord rock/blues progression",
       example_key: "G",
@@ -92,7 +100,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 1, accidental: 0, quality: nil},
         %{degree: 1, accidental: 0, quality: nil}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Blues, rock, jazz",
       description: "The quintessential 12-bar blues form",
       example_key: "A",
@@ -107,7 +115,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 5, accidental: 0, quality: :"7"},
         %{degree: 1, accidental: 0, quality: :maj7}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Jazz",
       description: "The most important progression in jazz; appears in virtually every standard",
       example_key: "C",
@@ -123,7 +131,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 4, accidental: 0, quality: nil},
         %{degree: 5, accidental: 0, quality: nil}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Doo-wop, 1950s pop, early rock & roll",
       description: "The '50s progression' or 'doo-wop progression'",
       example_key: "C",
@@ -143,7 +151,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 4, accidental: 0, quality: nil},
         %{degree: 5, accidental: 0, quality: nil}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Classical, baroque, pop",
       description: "Based on Pachelbel's Canon — descending fifth circular motion",
       example_key: "C",
@@ -159,7 +167,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 1, accidental: 0, quality: nil},
         %{degree: 5, accidental: 0, quality: nil}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Pop, adult contemporary",
       description: "Same chords as I-V-vi-IV starting on vi — more melancholic, yearning quality",
       example_key: "C",
@@ -174,7 +182,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 7, accidental: -1, quality: nil},
         %{degree: 4, accidental: 0, quality: nil}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Rock, folk-rock (mixolydian)",
       description:
         "Uses the flattened 7th degree from mixolydian mode — quintessential rock sound",
@@ -189,7 +197,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 1, accidental: 0, quality: nil},
         %{degree: 4, accidental: 0, quality: nil}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Folk, rock, pop, drone",
       description: "Simplest common progression — creates an open, unresolved vamp",
       example_key: "E",
@@ -205,7 +213,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 3, accidental: 0, quality: nil},
         %{degree: 7, accidental: 0, quality: nil}
       ],
-      key_mode: :minor,
+      scale_type: :minor,
       genre: "Pop, EDM, dance",
       description: "Minor-key equivalent of vi-IV-I-V — extremely common in modern pop and EDM",
       example_key: "A",
@@ -221,7 +229,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 3, accidental: 0, quality: nil},
         %{degree: 7, accidental: 0, quality: nil}
       ],
-      key_mode: :minor,
+      scale_type: :minor,
       genre: "Pop, rock",
       description:
         "All-natural-minor diatonic chords — the most common minor-key four-chord loop",
@@ -238,7 +246,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 6, accidental: 0, quality: nil},
         %{degree: 4, accidental: 0, quality: nil}
       ],
-      key_mode: :minor,
+      scale_type: :minor,
       genre: "Rock, instrumental guitar (harmonic minor)",
       description: "Fusion of Pachelbel's Canon with rock — uses harmonic minor raised 7th",
       example_key: "A",
@@ -257,7 +265,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 1, accidental: 0, quality: nil},
         %{degree: 4, accidental: 0, quality: :minor}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Pop, rock, classical",
       description: "Borrowing iv from parallel minor — creates emotional, bittersweet color",
       example_key: "C",
@@ -273,7 +281,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 4, accidental: 0, quality: nil},
         %{degree: 4, accidental: 0, quality: :minor}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Alternative rock, art rock",
       description:
         "Chromatic mediant I→III plus modal interchange IV→iv — iconic Radiohead sound",
@@ -288,7 +296,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 1, accidental: 0, quality: nil},
         %{degree: 3, accidental: -1, quality: :major}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Rock, film music, progressive",
       description: "Roots a major third apart — creates a dramatic, cinematic quality",
       example_key: "C",
@@ -302,7 +310,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 1, accidental: 0, quality: nil},
         %{degree: 6, accidental: -1, quality: :major}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Rock, film music, classical",
       description:
         "bVI borrowed from parallel minor — creates a broad, heroic, expansive quality",
@@ -317,7 +325,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 1, accidental: 0, quality: nil},
         %{degree: 3, accidental: 0, quality: :major}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Jazz, classical, Broadway",
       description: "Roots a major third apart, both major — bright, unexpected harmonic lift",
       example_key: "C",
@@ -333,7 +341,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 5, accidental: 0, quality: :"7"},
         %{degree: 1, accidental: 0, quality: nil}
       ],
-      key_mode: :minor,
+      scale_type: :minor,
       genre: "Classical, jazz",
       description:
         "The Neapolitan chord (bII major) — dramatic pre-dominant function; related to tritone substitution",
@@ -351,7 +359,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 4, accidental: 0, quality: :min7},
         %{degree: 1, accidental: 0, quality: nil}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Pop, jazz, classical",
       description:
         "Chromatic descending bass line — sophisticated and emotive; common in jazz ballads",
@@ -368,7 +376,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 6, accidental: 0, quality: nil},
         %{degree: 5, accidental: 0, quality: :major}
       ],
-      key_mode: :minor,
+      scale_type: :minor,
       genre: "Jazz, pop, film",
       description:
         "Chromatic descending bass — the 'James Bond' chord progression; cinematic and mysterious",
@@ -388,7 +396,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 2, accidental: 0, quality: :major},
         %{degree: 1, accidental: 0, quality: nil}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Classical, Baroque",
       description:
         "Baroque descending bass line with passing diminished chord — foundational in classical music",
@@ -405,7 +413,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 3, accidental: 0, quality: nil},
         %{degree: 4, accidental: 0, quality: nil}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Pop, jazz",
       description:
         "Ascending stepwise motion through diatonic chords — gentle, building, optimistic",
@@ -423,7 +431,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 7, accidental: -1, quality: nil},
         %{degree: 1, accidental: 0, quality: nil}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Rock, pop",
       description:
         "Stepwise descent from I to bVI with return through bVII — dramatic harmonic gesture",
@@ -445,7 +453,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 6, accidental: 0, quality: nil},
         %{degree: 5, accidental: 0, quality: :major}
       ],
-      key_mode: :minor,
+      scale_type: :minor,
       genre: "Flamenco, Spanish, classical, rock",
       description:
         "The most famous flamenco progression — descending bass from i to V; the raised 7th provides Spanish tension",
@@ -460,18 +468,18 @@ defmodule Fretboard.Music.Progression do
     },
     %{
       id: :flamenco_phrygian_dominant,
-      name: "Flamenco: Phrygian Dominant (i-bII-bIII-bII)",
+      name: "Flamenco: Phrygian Dominant (I-bII-bIII-bII)",
       category: "Exotic / World",
       degrees: [
         %{degree: 1, accidental: 0, quality: nil},
-        %{degree: 2, accidental: -1, quality: :major},
-        %{degree: 3, accidental: 0, quality: :major},
-        %{degree: 2, accidental: -1, quality: :major}
+        %{degree: 2, accidental: 0, quality: :major},
+        %{degree: 3, accidental: -1, quality: :major},
+        %{degree: 2, accidental: 0, quality: :major}
       ],
-      key_mode: :minor,
+      scale_type: :phrygian_dominant,
       genre: "Flamenco, Middle Eastern",
       description:
-        "Based on phrygian dominant scale (5th mode of harmonic minor) — the bII creates the characteristic flamenco bite",
+        "Phrygian dominant scale (5th mode of harmonic minor) — the tonic is major and the bII creates the characteristic flamenco bite",
       example_key: "E",
       notable_songs: ["various flamenco palos", "Middle Eastern-influenced rock/metal"]
     },
@@ -484,7 +492,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 4, accidental: 0, quality: :minor},
         %{degree: 5, accidental: 0, quality: :"7"}
       ],
-      key_mode: :minor,
+      scale_type: :minor,
       genre: "Classical, Eastern European, metal",
       description:
         "Uses raised 7th (V instead of bVII) from harmonic minor for stronger dominant-tonal resolution",
@@ -500,7 +508,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 2, accidental: -1, quality: :major},
         %{degree: 1, accidental: 0, quality: nil}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Byzantine, Greek, Middle Eastern, Indian",
       description:
         "Based on the double harmonic scale with augmented 2nd intervals — the I-bII is the signature sound",
@@ -516,7 +524,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 2, accidental: -1, quality: :major},
         %{degree: 4, accidental: 0, quality: :minor}
       ],
-      key_mode: :minor,
+      scale_type: :minor,
       genre: "Hungarian, Eastern European, klezmer, gypsy jazz",
       description:
         "Hungarian minor scale (harmonic minor with raised 4th) — distinctive Eastern European / gypsy flavor",
@@ -537,7 +545,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 5, accidental: 0, quality: nil},
         %{degree: 6, accidental: -1, quality: nil}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Japanese traditional, ambient, world fusion",
       description:
         "Based on hirajoshi pentatonic scale — distinctly Japanese harmonic colors; bII and bVI give Asian-influenced sound",
@@ -549,18 +557,18 @@ defmodule Fretboard.Music.Progression do
     },
     %{
       id: :middle_eastern_hijaz,
-      name: "World: Hijaz / Makam (i-bII-bIII-iv)",
+      name: "World: Hijaz / Makam (I-bII-bIII-iv)",
       category: "Exotic / World",
       degrees: [
         %{degree: 1, accidental: 0, quality: nil},
-        %{degree: 2, accidental: -1, quality: :major},
-        %{degree: 3, accidental: 0, quality: :major},
+        %{degree: 2, accidental: 0, quality: :major},
+        %{degree: 3, accidental: -1, quality: :major},
         %{degree: 4, accidental: 0, quality: :minor}
       ],
-      key_mode: :minor,
+      scale_type: :phrygian_dominant,
       genre: "Middle Eastern, Arabic, Turkish makam",
       description:
-        "The Hijaz mode/makam — augmented 2nd between bII and bIII is the hallmark of Middle Eastern music",
+        "The Hijaz mode/makam (phrygian dominant) — the tonic is major and the augmented 2nd between bII and bIII is the hallmark of Middle Eastern music",
       example_key: "D",
       notable_songs: [
         "Traditional Arabic/Turkish music",
@@ -570,18 +578,18 @@ defmodule Fretboard.Music.Progression do
     },
     %{
       id: :klezmer_freygish,
-      name: "World: Klezmer / Freygish (i-bII-III-VII)",
+      name: "World: Klezmer / Freygish (I-bII-III-VII)",
       category: "Exotic / World",
       degrees: [
         %{degree: 1, accidental: 0, quality: nil},
-        %{degree: 2, accidental: -1, quality: :major},
-        %{degree: 3, accidental: 0, quality: :major},
+        %{degree: 2, accidental: 0, quality: :major},
+        %{degree: 3, accidental: -1, quality: :major},
         %{degree: 7, accidental: 0, quality: :major}
       ],
-      key_mode: :minor,
+      scale_type: :phrygian_dominant,
       genre: "Klezmer, Jewish, Eastern European",
       description:
-        "'Freygish' = Yiddish for phrygian dominant — the i-bII-III movement is the core of klezmer harmony",
+        "'Freygish' = Yiddish for phrygian dominant — the tonic is major and the I-bII-III movement is the core of klezmer harmony",
       example_key: "D",
       notable_songs: [
         "Hava Nagila (partial)",
@@ -597,7 +605,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 1, accidental: 0, quality: :min7},
         %{degree: 4, accidental: 0, quality: :"7"}
       ],
-      key_mode: :minor,
+      scale_type: :minor,
       genre: "Jazz, rock, folk, funk (dorian mode)",
       description:
         "The raised 6th in dorian gives a brighter quality than natural minor — common in modal jazz",
@@ -613,7 +621,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 7, accidental: 0, quality: nil},
         %{degree: 4, accidental: 0, quality: nil}
       ],
-      key_mode: :minor,
+      scale_type: :minor,
       genre: "Rock, funk, soul",
       description:
         "Combines dorian brightness with aeolian — the IV chord is the key dorian characteristic",
@@ -628,7 +636,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 1, accidental: 0, quality: nil},
         %{degree: 2, accidental: 0, quality: :major}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Jazz, film, progressive rock (lydian mode)",
       description:
         "The II chord (major, not diminished) comes from the lydian raised 4th — floating, ethereal, dreamlike",
@@ -644,7 +652,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 2, accidental: 0, quality: :aug},
         %{degree: 3, accidental: 0, quality: :aug}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Jazz, impressionist, film",
       description:
         "Based on the whole tone scale — augmented chords create a floating, ambiguous, otherworldly quality",
@@ -665,7 +673,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 6, accidental: -1, quality: nil},
         %{degree: 7, accidental: -1, quality: nil}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Rock, pop (mixolydian with modal interchange)",
       description:
         "Combines mixolydian bVII with modal interchange bVI — rock anthem quality with dramatic lift",
@@ -681,7 +689,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 2, accidental: -1, quality: :major},
         %{degree: 1, accidental: 0, quality: nil}
       ],
-      key_mode: :minor,
+      scale_type: :minor,
       genre: "Flamenco, metal, progressive rock (phrygian mode)",
       description:
         "The simplest phrygian vamp — the bII major chord creates the characteristic dark, tense phrygian sound",
@@ -697,7 +705,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 2, accidental: -1, quality: :major},
         %{degree: 3, accidental: 0, quality: :major}
       ],
-      key_mode: :minor,
+      scale_type: :minor,
       genre: "Flamenco, Spanish",
       description: "Adds the III chord to the phrygian vamp — common in Spanish guitar music",
       example_key: "A",
@@ -712,7 +720,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 4, accidental: 0, quality: :"7"},
         %{degree: 5, accidental: 0, quality: :"7"}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Blues, rock",
       description:
         "All dominant 7th chords — the defining blues characteristic (dominant 7th on I doesn't fit diatonic major)",
@@ -728,7 +736,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 4, accidental: 0, quality: :min7},
         %{degree: 5, accidental: 0, quality: :"7"}
       ],
-      key_mode: :minor,
+      scale_type: :minor,
       genre: "Blues, jazz",
       description:
         "Minor-key blues — the V7 uses the harmonic minor raised 7th for stronger resolution",
@@ -750,7 +758,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 2, accidental: 0, quality: :min7},
         %{degree: 5, accidental: 0, quality: :"7"}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Jazz, bebop",
       description:
         "The A section of rhythm changes — one of the two most important progressions in jazz (with blues)",
@@ -773,7 +781,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 2, accidental: 0, quality: :min7},
         %{degree: 5, accidental: 0, quality: :"7"}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Jazz, bebop",
       description:
         "The B section (bridge) of rhythm changes — circle of fifths through secondary dominants",
@@ -791,7 +799,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 5, accidental: 0, quality: :"7"},
         %{degree: 1, accidental: 0, quality: :maj7}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Jazz, post-bop",
       description:
         "Root movement by major thirds — three key centers an augmented triad apart; Coltrane's harmonic innovation",
@@ -807,7 +815,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 5, accidental: 0, quality: :"7"},
         %{degree: 1, accidental: 0, quality: :maj7}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Jazz",
       description:
         "Inserts a ii-V-I a major third away before resolving — creates rapid harmonic motion through distant keys",
@@ -823,7 +831,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 7, accidental: -1, quality: :"7"},
         %{degree: 1, accidental: 0, quality: :maj7}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Jazz, soul",
       description:
         "Resolves to I via the 'back door' using iv and its dominant bVII7 — very common in modern jazz",
@@ -840,7 +848,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 2, accidental: 0, quality: :min7},
         %{degree: 5, accidental: 0, quality: :"7"}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Jazz, pop",
       description:
         "The standard jazz turnaround — leads back to the top of the form; supports many substitutions",
@@ -856,7 +864,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 5, accidental: 0, quality: :"7"},
         %{degree: 1, accidental: 0, quality: :min7}
       ],
-      key_mode: :minor,
+      scale_type: :minor,
       genre: "Jazz",
       description:
         "The minor key version of ii-V-I — ii is half-diminished (m7b5), V7 uses harmonic minor raised 7th",
@@ -872,7 +880,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 2, accidental: -1, quality: :"7"},
         %{degree: 1, accidental: 0, quality: :maj7}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Jazz",
       description:
         "Replaces V7 with bII7 — shares the same tritone, creating a chromatic bass descent; essential jazz substitution",
@@ -890,7 +898,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 5, accidental: 0, quality: :"7"},
         %{degree: 1, accidental: 0, quality: :maj7}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Jazz, Broadway",
       description:
         "Uses a secondary dominant (V/ii) to approach ii chromatically — creates forward harmonic motion",
@@ -915,7 +923,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 1, accidental: 0, quality: :maj7},
         %{degree: 5, accidental: 0, quality: :"7"}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Jazz, bebop",
       description:
         "Charlie Parker's reharmonization of the 12-bar blues with ii-V chains and substitutions",
@@ -930,7 +938,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 1, accidental: 0, quality: :min7},
         %{degree: 4, accidental: 0, quality: :"7"}
       ],
-      key_mode: :minor,
+      scale_type: :minor,
       genre: "Modal jazz (dorian)",
       description:
         "Modal jazz uses very few chords — often just a vamp, allowing extended improvisation on a single mode",
@@ -948,7 +956,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 5, accidental: 0, quality: :"7"},
         %{degree: 1, accidental: 0, quality: :maj7}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Jazz",
       description:
         "Extended circle-of-fifths chain — each chord resolves down a fifth to the next; smooth continuous motion",
@@ -964,7 +972,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 4, accidental: 0, quality: :min7},
         %{degree: 1, accidental: 0, quality: :maj7}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Jazz, pop, soul",
       description:
         "The IV to iv movement — one of the most expressive modal interchange devices; also called 'minor plagal cadence'",
@@ -979,7 +987,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 4, accidental: 0, quality: nil},
         %{degree: 1, accidental: 0, quality: nil}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Classical, hymns, rock",
       description: "The 'Amen' cadence — less final than V-I but with a warm, resolved quality",
       example_key: "C",
@@ -993,7 +1001,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 5, accidental: 0, quality: :"7"},
         %{degree: 6, accidental: 0, quality: :minor}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Classical, pop, jazz",
       description:
         "The V resolves deceptively to vi instead of I — creates surprise and extends the phrase",
@@ -1012,7 +1020,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 4, accidental: 0, quality: :minor},
         %{degree: 1, accidental: 0, quality: nil}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Pop, jazz, soul",
       description:
         "The minor subdominant resolving to major tonic — bittersweet, nostalgic quality; very expressive modal interchange",
@@ -1032,7 +1040,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 5, accidental: 0, quality: :"7"},
         %{degree: 1, accidental: 0, quality: :"7"}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Jazz, blues",
       description: "The jazz blues adds ii-V chains and turnarounds to the basic blues form",
       example_key: "Bb",
@@ -1047,7 +1055,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 5, accidental: 0, quality: :"7"},
         %{degree: 1, accidental: 0, quality: :maj7}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Bossa nova, Brazilian jazz",
       description:
         "Brazilian jazz typically uses ii-V-I with extended chord voicings (9ths, 11ths, 13ths)",
@@ -1079,7 +1087,7 @@ defmodule Fretboard.Music.Progression do
         %{degree: 2, accidental: 0, quality: :min7},
         %{degree: 5, accidental: 0, quality: :"7"}
       ],
-      key_mode: :major,
+      scale_type: :major,
       genre: "Jazz, Broadway, Tin Pan Alley",
       description:
         "The most important song form in jazz besides blues — 32 bars in AABA structure",
@@ -1166,7 +1174,7 @@ defmodule Fretboard.Music.Progression do
   @spec progression_chords(String.t(), atom()) :: [%{root: String.t(), quality: atom()}]
   def progression_chords(tonic, progression_id) do
     prog = progression(progression_id)
-    diatonic = Scale.diatonic_chords(tonic, prog.key_mode)
+    diatonic = Scale.diatonic_chords(tonic, prog.scale_type)
 
     Enum.map(prog.degrees, &resolve_degree_chord(&1, Enum.at(diatonic, &1.degree - 1)))
   end

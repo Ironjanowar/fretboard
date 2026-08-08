@@ -66,7 +66,7 @@ defmodule Fretboard.Music.ProgressionTest do
       assert prog.id == :pop_i_v_vi_iv
       assert Map.has_key?(prog, :name)
       assert Map.has_key?(prog, :degrees)
-      assert Map.has_key?(prog, :key_mode)
+      assert Map.has_key?(prog, :scale_type)
       assert Map.has_key?(prog, :category)
     end
 
@@ -177,6 +177,42 @@ defmodule Fretboard.Music.ProgressionTest do
       chords = Progression.progression_chords("A", :blues_12_bar)
       assert length(chords) == 12
     end
+
+    test "flamenco phrygian dominant in E has major tonic and correct bII/bIII" do
+      # Phrygian dominant tonic is MAJOR (not minor).
+      # Degree 2 is already bII in the scale (accidental 0), degree 3 needs accidental -1
+      # to flatten the major 3rd to bIII.
+      chords = Progression.progression_chords("E", :flamenco_phrygian_dominant)
+
+      assert chords == [
+               %{root: "E", quality: :major},
+               %{root: "F", quality: :major},
+               %{root: "G", quality: :major},
+               %{root: "F", quality: :major}
+             ]
+    end
+
+    test "middle eastern hijaz in D has major tonic and correct bII/bIII" do
+      chords = Progression.progression_chords("D", :middle_eastern_hijaz)
+
+      assert chords == [
+               %{root: "D", quality: :major},
+               %{root: "D#", quality: :major},
+               %{root: "F", quality: :major},
+               %{root: "G", quality: :minor}
+             ]
+    end
+
+    test "klezmer freygish in D has major tonic and correct bII/III/VII" do
+      chords = Progression.progression_chords("D", :klezmer_freygish)
+
+      assert chords == [
+               %{root: "D", quality: :major},
+               %{root: "D#", quality: :major},
+               %{root: "F", quality: :major},
+               %{root: "C", quality: :major}
+             ]
+    end
   end
 
   describe "accidental validity" do
@@ -192,7 +228,7 @@ defmodule Fretboard.Music.ProgressionTest do
     test "minor-key progressions do not flatten already-flat degrees 3, 6, 7" do
       # In a minor key, degrees 3, 6, 7 are already "flat" relative to the
       # parallel major. They must not carry an extra accidental: -1.
-      for prog <- Progression.all(), prog.key_mode == :minor do
+      for prog <- Progression.all(), prog.scale_type == :minor do
         for degree <- prog.degrees, degree.degree in [3, 6, 7] do
           assert degree.accidental == 0,
                  "minor progression #{prog.id} flattens degree #{degree.degree} " <>
@@ -206,6 +242,32 @@ defmodule Fretboard.Music.ProgressionTest do
       prog = Progression.progression(:rock_i_bvii_iv)
       degree_7 = Enum.find(prog.degrees, &(&1.degree == 7))
       assert degree_7.accidental == -1
+    end
+
+    test "phrygian_dominant progressions use correct accidentals for degrees 2 and 3" do
+      # In phrygian dominant, degree 2 is already bII (1 semitone from root), so it
+      # needs accidental: 0 (no extra flat). Degree 3 is a major 3rd (e.g. G# in E),
+      # so to get the bIII chord it needs accidental: -1.
+      phrygian_dom_progs =
+        for prog <- Progression.all(), Map.get(prog, :scale_type) == :phrygian_dominant, do: prog
+
+      assert length(phrygian_dom_progs) >= 3,
+             "expected at least 3 phrygian_dominant progressions, " <>
+               "got #{length(phrygian_dom_progs)}"
+
+      for prog <- phrygian_dom_progs do
+        degree_2 = Enum.find(prog.degrees, &(&1.degree == 2))
+        degree_3 = Enum.find(prog.degrees, &(&1.degree == 3))
+
+        assert degree_2.accidental == 0,
+               "phrygian_dominant progression #{prog.id} degree 2 should have " <>
+                 "accidental 0 (already bII in the scale), got #{degree_2.accidental}"
+
+        assert degree_3.accidental == -1,
+               "phrygian_dominant progression #{prog.id} degree 3 should have " <>
+                 "accidental -1 (diatonic is major 3rd, flatten to get bIII), " <>
+                 "got #{degree_3.accidental}"
+      end
     end
   end
 end

@@ -6,7 +6,7 @@ Comprehensive catalog of chord progressions organized by category, designed to p
 
 - **Name**: Display identifier
 - **Degrees**: Roman numeral formula (using standard notation: uppercase = major, lowercase = minor, ° = diminished, + = augmented)
-- **Key Mode**: Whether it's typically used in major, minor, or both
+- **Scale Type**: Whether it's typically used in major, minor, or both
 - **Genre/Tradition**: Musical style or tradition it belongs to
 - **Example**: Example chords in a specific key
 - **Notable Songs**: Well-known songs that use it
@@ -294,14 +294,14 @@ Comprehensive catalog of chord progressions organized by category, designed to p
 - **Notable Songs**: "Hit the Road Jack" (Ray Charles), "California Dreamin'" (The Mamas & the Papas), "Stray Cat Strut" (Stray Cats), "Sultans of Swing" (Dire Straits, partial), "Runaway" (Del Shannon)
 - **Notes**: The most famous flamenco progression. Descending bass line from i to V. The E major chord in A minor (harmonic minor raised 7th) provides the characteristic Spanish/flamenco tension. Also called the "minor descending tetrachord"
 
-### 31. Flamenco / Phrygian Dominant (i-bII-bIII-bII)
-- **Name**: "Flamenco: Phrygian Dominant (i-bII-bIII-bII)"
-- **Degrees**: i-bII-bIII-bII (in phrygian dominant)
-- **Key Mode**: Minor (phrygian dominant / harmonic minor)
+### 31. Flamenco / Phrygian Dominant (I-bII-bIII-bII)
+- **Name**: "Flamenco: Phrygian Dominant (I-bII-bIII-bII)"
+- **Degrees**: I-bII-bIII-bII (in phrygian dominant)
+- **Scale Type**: Phrygian dominant (5th mode of harmonic minor)
 - **Genre**: Flamenco, Middle Eastern
 - **Example (E)**: E-F-G-F (in E phrygian dominant)
 - **Notable Songs**: Various flamenco palos, Middle Eastern-influenced rock and metal
-- **Notes**: Based on the phrygian dominant scale (5th mode of harmonic minor). The bII chord (F major over E tonic) creates the characteristic flamenco "bite." Often used as an ostinato
+- **Notes**: Based on the phrygian dominant scale (5th mode of harmonic minor). The tonic is MAJOR. The bII chord (F major over E tonic) creates the characteristic flamenco "bite." Often used as an ostinato
 
 ### 32. Harmonic Minor (i-iv-VII or i-iv-V)
 - **Name**: "Harmonic Minor: i-iv-V"
@@ -357,23 +357,23 @@ Comprehensive catalog of chord progressions organized by category, designed to p
 - **Notable Songs**: Traditional Japanese music, Joe Hisaishi (Studio Ghibli soundtracks, partial influence)
 - **Notes**: The hirajoshi scale [0, 1, 4, 5, 8] yields these triads. The bII and bVI give the exotic, Asian-influenced sound
 
-### 38. Middle Eastern / Hijaz (i-bII-bIII-iv)
-- **Name**: "World: Hijaz / Makam (i-bII-bIII-iv)"
-- **Degrees**: i-bII-bIII-iv (phrygian dominant tetrachord)
-- **Key Mode**: Minor (phrygian dominant / hijaz mode)
+### 38. Middle Eastern / Hijaz (I-bII-bIII-iv)
+- **Name**: "World: Hijaz / Makam (I-bII-bIII-iv)"
+- **Degrees**: I-bII-bIII-iv (phrygian dominant tetrachord)
+- **Scale Type**: Phrygian dominant (Hijaz mode)
 - **Genre**: Middle Eastern, Arabic, Turkish makam
-- **Example (D)**: Dm-Eb-F-Gm (D hijaz / D phrygian dominant)
+- **Example (D)**: D-Eb-F-Gm (D hijaz / D phrygian dominant)
 - **Notable Songs**: Traditional Arabic and Turkish music, "Misirlou" (Dick Dale), various Middle Eastern pop
-- **Notes**: The Hijaz mode/makam uses the same intervals as the phrygian dominant scale. The augmented 2nd between bII and bIII is the hallmark of Middle Eastern and flamenco music
+- **Notes**: The Hijaz mode/makam uses the same intervals as the phrygian dominant scale. The tonic is MAJOR. The augmented 2nd between bII and bIII is the hallmark of Middle Eastern and flamenco music
 
-### 39. Klezmer / Freygish (i-bII-III-VII-i)
-- **Name**: "World: Klezmer / Freygish (i-bII-III-VII)"
-- **Degrees**: i-bII-III-VII-i
-- **Key Mode**: Minor (phrygian dominant / freygish)
+### 39. Klezmer / Freygish (I-bII-III-VII)
+- **Name**: "World: Klezmer / Freygish (I-bII-III-VII)"
+- **Degrees**: I-bII-III-VII
+- **Scale Type**: Phrygian dominant (Freygish mode)
 - **Genre**: Klezmer, Jewish, Eastern European
-- **Example (D)**: Dm-Eb-F-C-Dm
+- **Example (D)**: D-Eb-F-C
 - **Notable Songs**: Traditional klezmer tunes ("Hava Nagila" partial), "Bei Mir Bist Du Schön," various Eastern European folk
-- **Notes**: "Freygish" (frigish/freygish) is the Yiddish term for phrygian dominant. The i-bII-III movement is the core of klezmer harmony. The III major chord (not bIII) comes from the phrygian dominant scale
+- **Notes**: "Freygish" (frigish/freygish) is the Yiddish term for phrygian dominant. The tonic is MAJOR. The I-bII-III movement is the core of klezmer harmony. The III major chord (not bIII) comes from the phrygian dominant scale
 
 ### 40. Dorian Mode (i-IV-i-IV)
 - **Name**: "Modal: Dorian Vamp (i-IV)"
@@ -673,7 +673,7 @@ The progressions are defined using **degree numbers** (1-7) with optional accide
       %{degree: 6, quality: nil},        # vi
       %{degree: 4, quality: nil}          # IV
     ],
-    key_mode: :major,
+    scale_type: :major,
     genre: "Pop, pop-punk, rock",
     description: "The 'Axis of Awesome' progression used in countless pop hits",
     example_key: "C",
