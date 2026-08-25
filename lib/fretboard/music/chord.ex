@@ -202,7 +202,7 @@ defmodule Fretboard.Music.Chord do
     8 => 2,
     10 => 3,
     11 => 3,
-    1 => 0,
+    1 => 4,
     2 => 4,
     5 => 5,
     9 => 6
@@ -244,11 +244,16 @@ defmodule Fretboard.Music.Chord do
 
   defp sort_by_chord_member(labeled) do
     labeled
-    |> Enum.sort_by(fn {interval, _label} ->
-      {@chord_member_rank[interval], interval}
+    |> Enum.sort_by(fn {interval, label} ->
+      {chord_member_rank(interval, label), interval}
     end)
     |> extract_labels()
   end
+
+  # Semitone 8 is contextual: "Minor 13th" is a 13th-level extension (rank 6),
+  # while "Augmented 5th" is a 5th-level chord tone (rank 2).
+  defp chord_member_rank(8, "Minor 13th"), do: 6
+  defp chord_member_rank(interval, _label), do: @chord_member_rank[interval]
 
   defp extract_labels(labeled) do
     Enum.map(labeled, &elem(&1, 1))

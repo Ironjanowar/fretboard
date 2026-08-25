@@ -113,13 +113,13 @@ defmodule Fretboard.Music.ChordIntervalLabelsTest do
              ]
     end
 
-    test "7b9 uses Flat 9th (1 stays in semitone position with compound name)" do
+    test "7b9 uses Flat 9th (9th extension sorted after 7th)" do
       assert Chord.interval_labels(:"7b9") == [
                "Root",
-               "Flat 9th",
                "Major 3rd",
                "Perfect 5th",
-               "Minor 7th"
+               "Minor 7th",
+               "Flat 9th"
              ]
     end
 
@@ -215,23 +215,23 @@ defmodule Fretboard.Music.ChordIntervalLabelsTest do
              ]
     end
 
-    test "7b13 uses Minor 13th (8 with 7th)" do
+    test "7b13 uses Minor 13th (8 with 7th, sorted as 13th extension)" do
       assert Chord.interval_labels(:"7b13") == [
                "Root",
                "Major 3rd",
                "Perfect 5th",
-               "Minor 13th",
-               "Minor 7th"
+               "Minor 7th",
+               "Minor 13th"
              ]
     end
 
     test "13b9 uses Flat 9th and Major 13th" do
       assert Chord.interval_labels(:"13b9") == [
                "Root",
-               "Flat 9th",
                "Major 3rd",
                "Perfect 5th",
                "Minor 7th",
+               "Flat 9th",
                "Perfect 11th",
                "Major 13th"
              ]
@@ -252,9 +252,9 @@ defmodule Fretboard.Music.ChordIntervalLabelsTest do
     test "susb9 uses Flat 9th and Perfect 11th" do
       assert Chord.interval_labels(:susb9) == [
                "Root",
-               "Flat 9th",
                "Perfect 5th",
                "Minor 7th",
+               "Flat 9th",
                "Perfect 11th"
              ]
     end
@@ -276,8 +276,8 @@ defmodule Fretboard.Music.ChordIntervalLabelsTest do
                "Root",
                "Minor 3rd",
                "Perfect 5th",
-               "Minor 13th",
-               "Minor 7th"
+               "Minor 7th",
+               "Minor 13th"
              ]
     end
 

@@ -567,32 +567,34 @@ defmodule Fretboard.Music.Scale do
     newly_covered = MapSet.intersection(best.covered, remaining)
     new_covered = MapSet.union(covered, newly_covered)
 
-    covered_chords =
+    # Preserve the original chord indices directly — newly_covered is already
+    # a MapSet of indices. Storing indices (not chord values) avoids re-buscar
+    # with find_index, which fails on duplicate chords.
+    covered_indices =
       newly_covered
       |> Enum.sort()
-      |> Enum.map(&Enum.at(chords, &1))
 
     greedy_select(
       candidates,
       chords,
-      [{best, covered_chords} | selected],
+      [{best, covered_indices} | selected],
       new_covered,
       max_groups - 1
     )
   end
 
-  # Convert the list of {candidate, covered_chords} tuples (built in
+  # Convert the list of {candidate, covered_indices} tuples (built in
   # reverse order during greedy selection) into the final return shape.
   defp build_groups(selected, chords) do
-    groups = format_selected_groups(selected, length(chords))
+    groups = format_selected_groups(selected, chords, length(chords))
     unmatched = unmatched_chords(selected, chords)
     append_unmatched_group(groups, unmatched)
   end
 
-  defp format_selected_groups(selected, total) do
+  defp format_selected_groups(selected, chords, total) do
     selected
     |> Enum.reverse()
-    |> Enum.map(fn {cand, covered_chords} ->
+    |> Enum.map(fn {cand, covered_indices} ->
       %{
         key: %{
           tonic: cand.tonic,
@@ -601,7 +603,7 @@ defmodule Fretboard.Music.Scale do
           total: total,
           diatonic_chords: cand.diatonic_chords
         },
-        chords: covered_chords
+        chords: Enum.map(covered_indices, &Enum.at(chords, &1))
       }
     end)
     # Order groups by coverage (chord count) descending.
@@ -609,22 +611,16 @@ defmodule Fretboard.Music.Scale do
   end
 
   defp unmatched_chords(selected, chords) do
-    covered_indices = covered_chord_indices(selected, chords)
+    # Indices are preserved directly in selected — no re-búsqueda needed.
+    covered_indices =
+      selected
+      |> Enum.flat_map(fn {_cand, indices} -> indices end)
+      |> MapSet.new()
 
     chords
     |> Enum.with_index()
     |> Enum.filter(fn {_chord, i} -> not MapSet.member?(covered_indices, i) end)
     |> Enum.map(fn {chord, _i} -> chord end)
-  end
-
-  defp covered_chord_indices(selected, chords) do
-    selected
-    |> Enum.flat_map(fn {_cand, covered_chords} ->
-      Enum.map(covered_chords, fn chord ->
-        Enum.find_index(chords, &(&1 == chord))
-      end)
-    end)
-    |> MapSet.new()
   end
 
   defp append_unmatched_group(groups, []), do: groups

@@ -8,6 +8,18 @@ defmodule Fretboard.Music.Note do
 
   @chromatic_scale ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
+  # Flat note names are normalized to their enharmonic sharp equivalents
+  # so that all lookups work against the sharp-only chromatic scale.
+  @flat_to_sharp %{
+    "Db" => "C#",
+    "Eb" => "D#",
+    "Fb" => "E",
+    "Gb" => "F#",
+    "Ab" => "G#",
+    "Bb" => "A#",
+    "Cb" => "B"
+  }
+
   @doc """
   Returns the 12-note chromatic scale starting from C.
   """
@@ -16,10 +28,14 @@ defmodule Fretboard.Music.Note do
 
   @doc """
   Returns the index (0-11) of a note in the chromatic scale.
+
+  Flat note names (Db, Eb, Gb, Ab, Bb, Cb, Fb) are normalized to their
+  enharmonic sharp equivalents before lookup.
   """
   @spec note_index(String.t()) :: non_neg_integer()
   def note_index(note) do
-    Enum.find_index(@chromatic_scale, &(&1 == note))
+    normalized = Map.get(@flat_to_sharp, note, note)
+    Enum.find_index(@chromatic_scale, &(&1 == normalized))
   end
 
   @doc """
