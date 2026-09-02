@@ -36,6 +36,7 @@ defmodule FretboardWeb.Modals do
       >
         <div class="modal-backdrop" phx-click="close_tuning_modal"></div>
         <div class="modal-content">
+          <div class="modal-handle"></div>
           <h2 class="modal-title">Tuning</h2>
 
           <%!-- Preset Dropdown --%>
@@ -124,6 +125,7 @@ defmodule FretboardWeb.Modals do
       >
         <div class="modal-backdrop" phx-click="close_key_modal"></div>
         <div class="modal-content">
+          <div class="modal-handle"></div>
           <h2 class="modal-title">Key</h2>
 
           <form phx-change="update_key" id="key-form">
@@ -230,6 +232,7 @@ defmodule FretboardWeb.Modals do
       >
         <div class="modal-backdrop" phx-click="close_progression_modal"></div>
         <div class="modal-content">
+          <div class="modal-handle"></div>
           <h2 class="modal-title">Chord Progressions</h2>
 
           <form phx-change="update_progression" id="progression-form">
