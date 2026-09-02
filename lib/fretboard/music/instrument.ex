@@ -31,6 +31,13 @@ defmodule Fretboard.Music.Instrument do
     {"Drop A", ["A", "E", "A", "D", "G"]}
   ]
 
+  @ukelele_presets [
+    {"Standard", ["G", "C", "E", "A"]},
+    {"D tuning", ["A", "D", "F#", "B"]},
+    {"Baritone", ["D", "G", "B", "E"]},
+    {"Half Step Down", ["F#", "B", "D#", "G#"]}
+  ]
+
   @instruments %{
     guitar: %{
       name: "Guitar",
@@ -52,18 +59,32 @@ defmodule Fretboard.Music.Instrument do
       standard_tuning: ["B", "E", "A", "D", "G"],
       presets: @bass_5_presets,
       frets: 24
+    },
+    ukelele: %{
+      name: "Ukelele",
+      strings: 4,
+      standard_tuning: ["G", "C", "E", "A"],
+      presets: @ukelele_presets,
+      frets: 24
     }
   }
 
-  @type instrument_key :: :guitar | :bass_4 | :bass_5
+  @type instrument_key :: :guitar | :bass_4 | :bass_5 | :ukelele
   @type preset :: {String.t(), [String.t()]}
+
+  @instrument_keys [:guitar, :bass_4, :bass_5, :ukelele]
 
   @doc """
   Returns a list of `{key, label}` tuples for all supported instruments.
   """
   @spec instruments() :: [{atom(), String.t()}]
   def instruments do
-    [{:guitar, "Guitar"}, {:bass_4, "Bass (4-string)"}, {:bass_5, "Bass (5-string)"}]
+    [
+      {:guitar, "Guitar"},
+      {:bass_4, "Bass (4-string)"},
+      {:bass_5, "Bass (5-string)"},
+      {:ukelele, "Ukelele"}
+    ]
   end
 
   @doc """
@@ -73,7 +94,7 @@ defmodule Fretboard.Music.Instrument do
   `:frets`. Returns `nil` for unknown instruments.
   """
   @spec instrument(instrument_key() | atom()) :: map() | nil
-  def instrument(key) when key in [:guitar, :bass_4, :bass_5] do
+  def instrument(key) when key in @instrument_keys do
     Map.get(@instruments, key)
   end
 
@@ -83,7 +104,7 @@ defmodule Fretboard.Music.Instrument do
   Returns the number of strings for the given instrument.
   """
   @spec instrument_strings(instrument_key()) :: pos_integer()
-  def instrument_strings(key) when key in [:guitar, :bass_4, :bass_5] do
+  def instrument_strings(key) when key in @instrument_keys do
     instrument(key).strings
   end
 
@@ -92,7 +113,7 @@ defmodule Fretboard.Music.Instrument do
   given instrument.
   """
   @spec instrument_standard_tuning(instrument_key()) :: [String.t()]
-  def instrument_standard_tuning(key) when key in [:guitar, :bass_4, :bass_5] do
+  def instrument_standard_tuning(key) when key in @instrument_keys do
     instrument(key).standard_tuning
   end
 
@@ -102,7 +123,7 @@ defmodule Fretboard.Music.Instrument do
   Each preset is a tuple of `{name, notes}`.
   """
   @spec instrument_tuning_presets(instrument_key()) :: [preset()]
-  def instrument_tuning_presets(key) when key in [:guitar, :bass_4, :bass_5] do
+  def instrument_tuning_presets(key) when key in @instrument_keys do
     instrument(key).presets
   end
 
@@ -110,7 +131,7 @@ defmodule Fretboard.Music.Instrument do
   Returns just the names of all tuning presets for the given instrument.
   """
   @spec instrument_preset_names(instrument_key()) :: [String.t()]
-  def instrument_preset_names(key) when key in [:guitar, :bass_4, :bass_5] do
+  def instrument_preset_names(key) when key in @instrument_keys do
     key
     |> instrument_tuning_presets()
     |> Enum.map(&elem(&1, 0))

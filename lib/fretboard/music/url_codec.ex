@@ -62,13 +62,15 @@ defmodule Fretboard.Music.URLCodec do
   @instrument_to_string %{
     guitar: "guitar",
     bass_4: "bass_4",
-    bass_5: "bass_5"
+    bass_5: "bass_5",
+    ukelele: "ukelele"
   }
 
   @string_to_instrument %{
     "guitar" => :guitar,
     "bass_4" => :bass_4,
-    "bass_5" => :bass_5
+    "bass_5" => :bass_5,
+    "ukelele" => :ukelele
   }
 
   @doc """
