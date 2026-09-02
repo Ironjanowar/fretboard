@@ -814,12 +814,13 @@ defmodule FretboardWeb.FretboardLiveTest do
       assert html =~ ~s(id="instrument-select") or html =~ ~s(phx-click="change_instrument")
     end
 
-    test "instrument selector shows all 3 instruments", %{conn: conn} do
+    test "instrument selector shows all 4 instruments", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/")
 
       assert html =~ "Guitar"
       assert html =~ "Bass (4-string)"
       assert html =~ "Bass (5-string)"
+      assert html =~ "Ukelele"
     end
 
     test "instrument selector defaults to Guitar", %{conn: conn} do
@@ -844,6 +845,12 @@ defmodule FretboardWeb.FretboardLiveTest do
       {:ok, _view, html} = live(conn, "/?instrument=bass_5")
 
       assert length(Regex.scan(~r/class="string-line"/, html)) == 5
+    end
+
+    test "mount with instrument=ukelele renders 4 string lines", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/?instrument=ukelele")
+
+      assert length(Regex.scan(~r/class="string-line"/, html)) == 4
     end
 
     test "mount with instrument=bass_4 shows 4 tuning labels", %{conn: conn} do
@@ -882,6 +889,19 @@ defmodule FretboardWeb.FretboardLiveTest do
 
       # bass_5 standard tuning DOM order (low to high): B, E, A, D, G
       assert labels == ["B", "E", "A", "D", "G"]
+    end
+
+    test "mount with instrument=ukelele shows 4 tuning labels (G,C,E,A)", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/?instrument=ukelele")
+
+      assert length(Regex.scan(~r/class="tuning-label"/, html)) == 4
+
+      labels =
+        Regex.scan(~r/class="tuning-label"[^>]*>\s*([A-G]#?)\s*</s, html)
+        |> Enum.map(fn [_, note] -> note end)
+
+      # ukelele standard tuning DOM order (low to high): G, C, E, A
+      assert labels == ["G", "C", "E", "A"]
     end
 
     test "mount without instrument defaults to 6 strings (guitar)", %{conn: conn} do

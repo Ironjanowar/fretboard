@@ -342,6 +342,14 @@ defmodule Fretboard.Music.URLCodecTest do
     test "encodes custom bass_5 tuning" do
       assert URLCodec.encode_tuning(:bass_5, ["A", "E", "A", "D", "G"]) == "A,E,A,D,G"
     end
+
+    test "returns nil for ukelele standard tuning" do
+      assert URLCodec.encode_tuning(:ukelele, ["G", "C", "E", "A"]) == nil
+    end
+
+    test "encodes custom ukelele tuning" do
+      assert URLCodec.encode_tuning(:ukelele, ["A", "D", "F#", "B"]) == "A,D,F#,B"
+    end
   end
 
   describe "decode_tuning/2" do
@@ -363,6 +371,14 @@ defmodule Fretboard.Music.URLCodecTest do
 
     test "decodes valid 5-note tuning for bass_5" do
       assert URLCodec.decode_tuning("B,E,A,D,G", :bass_5) == ["B", "E", "A", "D", "G"]
+    end
+
+    test "returns ukelele standard tuning for nil" do
+      assert URLCodec.decode_tuning(nil, :ukelele) == ["G", "C", "E", "A"]
+    end
+
+    test "decodes valid 4-note tuning for ukelele" do
+      assert URLCodec.decode_tuning("A,D,F#,B", :ukelele) == ["A", "D", "F#", "B"]
     end
 
     test "falls back to bass_4 standard when tuning has wrong note count (6 notes)" do
@@ -398,6 +414,12 @@ defmodule Fretboard.Music.URLCodecTest do
     test "includes instrument key for bass_5 with standard tuning" do
       assert URLCodec.encode_params(:bass_5, ["B", "E", "A", "D", "G"], []) == %{
                "instrument" => "bass_5"
+             }
+    end
+
+    test "includes instrument key for ukelele with standard tuning" do
+      assert URLCodec.encode_params(:ukelele, ["G", "C", "E", "A"], []) == %{
+               "instrument" => "ukelele"
              }
     end
   end
@@ -439,8 +461,13 @@ defmodule Fretboard.Music.URLCodecTest do
                {:bass_5, ["B", "E", "A", "D", "G"], [], nil}
     end
 
+    test "decodes ukelele with standard tuning when instrument present" do
+      assert URLCodec.decode_params(%{"instrument" => "ukelele"}) ==
+               {:ukelele, ["G", "C", "E", "A"], [], nil}
+    end
+
     test "invalid instrument defaults to guitar with guitar standard" do
-      assert URLCodec.decode_params(%{"instrument" => "ukulele"}) ==
+      assert URLCodec.decode_params(%{"instrument" => "horn"}) ==
                {:guitar, ["E", "A", "D", "G", "B", "E"], [], nil}
     end
 
@@ -482,7 +509,7 @@ defmodule Fretboard.Music.URLCodecTest do
     end
 
     test "invalid instrument with valid 6-note tuning uses guitar" do
-      params = %{"instrument" => "ukulele", "tuning" => "D,A,D,G,B,E"}
+      params = %{"instrument" => "horn", "tuning" => "D,A,D,G,B,E"}
 
       assert URLCodec.decode_params(params) ==
                {:guitar, ["D", "A", "D", "G", "B", "E"], [], nil}
@@ -547,6 +574,20 @@ defmodule Fretboard.Music.URLCodecTest do
       assert decoded_tuning == tuning
       assert decoded_chords == chords
       assert highlighted_index == 1
+    end
+
+    test "round-trip ukelele with custom tuning preserves instrument and tuning" do
+      chords = [%{root: "C", quality: :major}]
+      tuning = ["A", "D", "F#", "B"]
+
+      params = URLCodec.encode_params(:ukelele, tuning, chords)
+
+      {instrument, decoded_tuning, decoded_chords, _highlighted_index} =
+        URLCodec.decode_params(params)
+
+      assert instrument == :ukelele
+      assert decoded_tuning == tuning
+      assert decoded_chords == chords
     end
   end
 end
