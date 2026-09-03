@@ -101,8 +101,11 @@ export const FretboardPanZoom = {
     }
 
     // --- Pointer events (touch + mouse via Pointer Events API) ---
+    // Pointer capture is NOT used: capturing redirects pointerup/click to the
+    // container, which would swallow clicks on child elements (phx-click on
+    // note positions). Instead, down is tracked on the container and
+    // move/up are tracked on window — the standard pan/zoom pattern.
     function onPointerDown(e) {
-      container.setPointerCapture(e.pointerId)
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
       dragMoved = false
 
@@ -114,6 +117,10 @@ export const FretboardPanZoom = {
         const pts = [...pointers.values()]
         pinchStart = {
           dist: distance(pts[0], pts[1]),
+          midX: midpoint(pts[0], pts[1]).x,
+          midY: midpoint(pts[0], pts[1]).y,
+          vbX: state.x,
+          vbY: state.y,
           vbW: state.w,
           vbH: state.h,
         }
@@ -130,14 +137,25 @@ export const FretboardPanZoom = {
         const dist = distance(pts[0], pts[1])
         const factor = dist / pinchStart.dist
         const mid = midpoint(pts[0], pts[1])
-        const focalSvg = clientToSvg(mid.x, mid.y)
 
-        // Reset to pinch-start state, then zoom — avoids drift
+        // Reset to pinch-start state — avoids drift across frames
         state.w = pinchStart.vbW
         state.h = pinchStart.vbH
-        state.x = clamp(state.x, 0, initial.w - state.w)
-        state.y = clamp(state.y, 0, initial.h - state.h)
+        state.x = pinchStart.vbX
+        state.y = pinchStart.vbY
+        applyViewBox()
+
+        // Pan first: follow midpoint movement in start-state SVG coords
+        const startMidSvg = clientToSvg(pinchStart.midX, pinchStart.midY)
+        const currentMidSvg = clientToSvg(mid.x, mid.y)
+        state.x = clamp(state.x + (startMidSvg.x - currentMidSvg.x), 0, initial.w - state.w)
+        state.y = clamp(state.y + (startMidSvg.y - currentMidSvg.y), 0, initial.h - state.h)
+        applyViewBox()
+
+        // Then zoom toward the current midpoint
+        const focalSvg = clientToSvg(mid.x, mid.y)
         zoomAt(focalSvg, factor)
+
         dragMoved = true
         e.preventDefault()
         return
@@ -173,8 +191,19 @@ export const FretboardPanZoom = {
 
       if (pointers.size === 0) {
         dragging = false
-        // If this was a tap (no significant movement), let phx-click fire naturally
-        dragMoved = false
+        // dragMoved is intentionally NOT reset here: the click event fires
+        // after pointerup, and the capture-phase click suppressor below needs
+        // to know whether this interaction was a drag. It is reset on the
+        // next pointerdown instead.
+      }
+    }
+
+    // Swallow the click that follows a drag/pan so releasing over a note
+    // position does not toggle it. Taps (no significant movement) pass through.
+    function onClickCapture(e) {
+      if (dragMoved) {
+        e.stopPropagation()
+        e.preventDefault()
       }
     }
 
@@ -236,11 +265,14 @@ export const FretboardPanZoom = {
     }
 
     // --- Register ---
+    // down on the container; move/up/cancel on window so drags continue even
+    // when the pointer leaves the container (and no capture is needed).
     container.addEventListener("pointerdown", onPointerDown)
-    container.addEventListener("pointermove", onPointerMove)
-    container.addEventListener("pointerup", onPointerUp)
-    container.addEventListener("pointercancel", onPointerUp)
+    window.addEventListener("pointermove", onPointerMove)
+    window.addEventListener("pointerup", onPointerUp)
+    window.addEventListener("pointercancel", onPointerUp)
     container.addEventListener("wheel", onWheel, { passive: false })
+    container.addEventListener("click", onClickCapture, true)
 
     this.handleEvent("set_viewport", handleSetViewport)
 
@@ -250,6 +282,7 @@ export const FretboardPanZoom = {
       onPointerMove,
       onPointerUp,
       onWheel,
+      onClickCapture,
       handleSetViewport,
       container,
       state,
@@ -260,10 +293,11 @@ export const FretboardPanZoom = {
     const ctx = this._panZoom
     if (!ctx) return
     ctx.container.removeEventListener("pointerdown", ctx.onPointerDown)
-    ctx.container.removeEventListener("pointermove", ctx.onPointerMove)
-    ctx.container.removeEventListener("pointerup", ctx.onPointerUp)
-    ctx.container.removeEventListener("pointercancel", ctx.onPointerUp)
+    window.removeEventListener("pointermove", ctx.onPointerMove)
+    window.removeEventListener("pointerup", ctx.onPointerUp)
+    window.removeEventListener("pointercancel", ctx.onPointerUp)
     ctx.container.removeEventListener("wheel", ctx.onWheel)
+    ctx.container.removeEventListener("click", ctx.onClickCapture, true)
   },
 
   updated() {
