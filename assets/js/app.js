@@ -24,13 +24,12 @@ import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/fretboard"
 import topbar from "../vendor/topbar"
-import {FretboardPanZoom} from "./hooks/fretboard_pan_zoom"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, FretboardPanZoom},
+  hooks: {...colocatedHooks},
 })
 
 // Show progress bar on live navigation and form submits

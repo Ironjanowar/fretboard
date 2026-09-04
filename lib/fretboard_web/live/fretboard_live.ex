@@ -478,17 +478,6 @@ defmodule FretboardWeb.FretboardLive do
      )}
   end
 
-  @doc """
-  Quick-jump handler: adjusts the fretboard viewport to show 12 frets
-  starting at the requested fret position. Pushes a `set_viewport` event
-  to the client-side FretboardPanZoom hook.
-  """
-  @impl true
-  def handle_event("jump_to", %{"fret" => fret_str}, socket) do
-    fret = String.to_integer(fret_str)
-    {:noreply, push_event(socket, "set_viewport", %{start_fret: fret})}
-  end
-
   @impl true
   def render(assigns) do
     ~H"""
@@ -648,26 +637,6 @@ defmodule FretboardWeb.FretboardLive do
   end
 
   # ---------------------------------------------------------------------------
-  # Quick-jump anchor bar (mobile only — visibility controlled by CSS)
-  # ---------------------------------------------------------------------------
-
-  defp quick_jump_bar(assigns) do
-    ~H"""
-    <div class="quick-jump-bar">
-      <button type="button" class="quick-jump-btn" phx-click="jump_to" phx-value-fret="0">
-        Open
-      </button>
-      <button type="button" class="quick-jump-btn" phx-click="jump_to" phx-value-fret="5">
-        5th
-      </button>
-      <button type="button" class="quick-jump-btn" phx-click="jump_to" phx-value-fret="12">
-        12th
-      </button>
-    </div>
-    """
-  end
-
-  # ---------------------------------------------------------------------------
   # Visualizer tab
   # ---------------------------------------------------------------------------
 
@@ -692,9 +661,6 @@ defmodule FretboardWeb.FretboardLive do
       chord_colors={@chord_colors}
       highlighted_chord={@highlighted_chord}
     />
-
-    <%!-- Quick-jump anchors (mobile only, shown via CSS) --%>
-    <.quick_jump_bar />
 
     <%!-- Clear button (only shown when there are active chords) --%>
     <div :if={length(@active_chords) > 0} class="analyzer-results">
@@ -1099,9 +1065,6 @@ defmodule FretboardWeb.FretboardLive do
       tuning={@tuning}
       marked_notes={@marked_notes}
     />
-
-    <%!-- Quick-jump anchors (mobile only, shown via CSS) --%>
-    <.quick_jump_bar />
 
     <%!-- Clear button (only shown when there are marked notes) --%>
     <div :if={map_size(@marked_notes) > 0} class="analyzer-results">

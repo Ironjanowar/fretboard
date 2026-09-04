@@ -21,14 +21,12 @@ defmodule FretboardWeb.FretboardSVG do
 
   def fretboard_svg(assigns) do
     ~H"""
-    <div
-      class="fretboard-wrapper"
-      id="fretboard"
-      phx-hook="FretboardPanZoom"
-      data-initial-view-box={"0 0 #{@svg.width} #{@svg.height}"}
-      style="touch-action: none; overflow: hidden;"
-    >
-      <svg class="fretboard-svg">
+    <div class="fretboard-wrapper" id="fretboard">
+      <svg
+        viewBox={"0 0 #{@svg.width} #{@svg.height}"}
+        class="fretboard-svg"
+        style="min-width: 900px;"
+      >
         <.fretboard_background svg={@svg} />
         <.fret_lines svg={@svg} />
         <.fret_markers svg={@svg} />
@@ -57,14 +55,12 @@ defmodule FretboardWeb.FretboardSVG do
 
   def analyzer_fretboard_svg(assigns) do
     ~H"""
-    <div
-      class="fretboard-wrapper"
-      id="analyzer-fretboard"
-      phx-hook="FretboardPanZoom"
-      data-initial-view-box={"0 0 #{@svg.width} #{@svg.height}"}
-      style="touch-action: none; overflow: hidden;"
-    >
-      <svg class="fretboard-svg">
+    <div class="fretboard-wrapper" id="analyzer-fretboard">
+      <svg
+        viewBox={"0 0 #{@svg.width} #{@svg.height}"}
+        class="fretboard-svg"
+        style="min-width: 900px;"
+      >
         <.fretboard_background svg={@svg} />
         <.fret_lines svg={@svg} />
         <.fret_markers svg={@svg} />
