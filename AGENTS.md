@@ -92,6 +92,16 @@ mix deps.get                   # Fetch deps
 mix deps.compile               # Compile deps
 ```
 
+## Tidewave (dev-only MCP)
+
+Tidewave is installed for dev only: `{:tidewave, "~> 0.9.0", only: :dev}` in `mix.exs` and `plug Tidewave` (NOT `Tidewave.Plug` — in >= 0.9 the `Tidewave` module itself implements the Plug behaviour) in `lib/fretboard_web/endpoint.ex`, placed BEFORE the `if code_reloading? do` block (the plug raises if it runs after the code reloader or body parsers). Guarded by `Mix.env() == :dev`. MCP endpoint: `http://localhost:4000/tidewave/mcp`.
+
+Agent instructions:
+
+> Always use Tidewave's tools for evaluating code, querying the database, etc. Use `get_docs` to access documentation and the `get_source_location` tool to find module/function definitions.
+
+Pitfall: after adding or updating deps, restart `mix phx.server` — the code reloader cannot load modules from dependencies compiled after the server booted (`UndefinedFunctionError Tidewave.Plug is undefined`).
+
 ## Elixir Coding Conventions
 
 ### Naming

@@ -11,6 +11,7 @@ defmodule FretboardWeb.FretboardLive do
 
   import FretboardWeb.FretboardSVG, only: [fretboard_svg: 1, analyzer_fretboard_svg: 1]
   import FretboardWeb.Modals
+  import Phoenix.LiveView.JS, only: [toggle: 1]
 
   alias Fretboard.Music
   alias Fretboard.Music.Note
@@ -544,6 +545,19 @@ defmodule FretboardWeb.FretboardLive do
         >
           🎸 Tuning
         </button>
+
+        <%!-- 'More' chevron: client-side toggle for secondary controls (mobile only) --%>
+        <button
+          type="button"
+          class="controls-more-btn"
+          phx-click={toggle(to: "#controls-secondary", display: "flex")}
+          aria-label="Toggle more controls"
+        >
+          ⋯ More
+        </button>
+      </div>
+
+      <div id="controls-secondary" class="controls-secondary">
         <form phx-change="change_instrument" id="instrument-form">
           <select
             id="instrument-select"

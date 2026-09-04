@@ -29,6 +29,10 @@ defmodule FretboardWeb.Endpoint do
 
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.
+  if Mix.env() == :dev do
+    plug Tidewave
+  end
+
   if code_reloading? do
     plug Phoenix.CodeReloader
   end

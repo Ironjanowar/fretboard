@@ -25,6 +25,9 @@ body {
 .controls-wrapper {
   width: 100%;
   max-width: 80rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 .controls-row {
@@ -757,4 +760,103 @@ body {
 
 .analysis-card-bass strong {
   color: #e5e7eb;
+}
+
+/* ===== Desktop: min-width for fretboard SVG (moved from inline style) ===== */
+@media (min-width: 1280px) {
+  .fretboard-svg {
+    min-width: 900px;
+  }
+}
+
+/* ===== Collapsible Secondary Controls ===== */
+.controls-secondary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.controls-more-btn {
+  display: none;
+}
+
+/* ===== Modal Handle (mobile bottom sheet grab bar) ===== */
+.modal-handle {
+  display: none;
+}
+
+/* ===== Mobile Responsive ===== */
+@media (max-width: 1279px) {
+  .main-container {
+    padding: 0.75rem;
+    gap: 1rem;
+  }
+
+  .controls-row {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .controls-row .btn,
+  .controls-row .form-select,
+  .controls-row select,
+  .controls-row button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Secondary controls hidden by default on mobile; JS.toggle sets inline
+     display:flex to show when 'More' is clicked */
+  .controls-secondary {
+    display: none;
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+  }
+
+  /* 'More' button visible only on mobile */
+  .controls-more-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    background-color: #374151;
+    color: #ffffff;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
+
+  .controls-more-btn:hover {
+    background-color: #4b5563;
+  }
+
+  /* ===== Modal Bottom Sheets ===== */
+  .modal-overlay {
+    align-items: flex-end;
+  }
+
+  .modal-content {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 0.75rem 0.75rem 0 0 0;
+    margin-bottom: 0;
+  }
+
+  .modal-handle {
+    display: block;
+    width: 2.5rem;
+    height: 0.25rem;
+    background-color: #4b5563;
+    border-radius: 9999px;
+    margin: 0 auto 1rem auto;
+  }
 }
