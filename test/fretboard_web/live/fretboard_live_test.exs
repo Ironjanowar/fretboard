@@ -912,6 +912,18 @@ defmodule FretboardWeb.FretboardLiveTest do
   end
 
   describe "change_instrument event" do
+    test "reselecting guitar preserves the rendered custom tuning", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/?instrument=guitar&tuning=C,A,D,G,B,E")
+
+      html = render_click(view, "change_instrument", %{"instrument" => "guitar"})
+
+      labels =
+        Regex.scan(~r/class="tuning-label"[^>]*>\s*([A-G]#?)\s*</s, html)
+        |> Enum.map(fn [_, note] -> note end)
+
+      assert labels == ["C", "A", "D", "G", "B", "E"]
+    end
+
     test "changing to bass_4 updates the fretboard to 4 strings", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/")
 
