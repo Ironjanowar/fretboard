@@ -3,6 +3,8 @@ defmodule Fretboard.Music.URLCodec do
   Serializes and deserializes fretboard state to/from URL query parameters.
 
   Enables shareable URLs that restore instrument, tuning, and active chords.
+  Query values are untrusted terms: non-string fields use their own defaults
+  without discarding valid siblings. No input is converted into a new atom.
   """
 
   alias Fretboard.Music.{Chord, Instrument, Note, Pitch}
@@ -90,71 +92,12 @@ defmodule Fretboard.Music.URLCodec do
   defp valid_pitch?({pitch, ""}) when pitch in 0..127, do: true
   defp valid_pitch?(_), do: false
 
-  @labels_to_quality %{
-    "maj" => :major,
-    "min" => :minor,
-    "dim" => :dim,
-    "aug" => :aug,
-    "sus2" => :sus2,
-    "sus4" => :sus4,
-    "7" => :"7",
-    "maj7" => :maj7,
-    "min7" => :min7,
-    "dim7" => :dim7,
-    "m7b5" => :m7b5,
-    "mMaj7" => :min_maj7,
-    "augMaj7" => :aug_maj7,
-    "aug7" => :aug7,
-    "6" => :maj6,
-    "m6" => :min6,
-    "add9" => :add9,
-    "madd9" => :m_add9,
-    "6/9" => :maj6_9,
-    "m6/9" => :min6_9,
-    "9" => :"9",
-    "maj9" => :maj9,
-    "m9" => :min9,
-    "7b9" => :"7b9",
-    "7#9" => :"7#9",
-    "9#5" => :"9#5",
-    "9b5" => :"9b5",
-    "7b5" => :"7b5",
-    "7sus" => :"7sus4",
-    "dimMaj7" => :dim_maj7,
-    "maj7#11" => :"maj7#11",
-    "7#11" => :"7#11",
-    "7b13" => :"7b13",
-    "7b9b13" => :"7b9b13",
-    "11" => :"11",
-    "maj11" => :maj11,
-    "m11" => :min11,
-    "m11b5" => :m11b5,
-    "13" => :"13",
-    "maj13" => :maj13,
-    "m13" => :min13,
-    "13b9" => :"13b9",
-    "sus9" => :sus9,
-    "susb9" => :susb9,
-    "sus13" => :sus13,
-    "m7b13" => :min7b13,
-    "dim7b13" => :dim7b13
-  }
-
+  @labels_to_quality Map.new(Chord.available_qualities(), &{Chord.label(&1), &1})
   @valid_notes MapSet.new(Note.chromatic_scale())
-
-  @instrument_to_string %{
-    guitar: "guitar",
-    bass_4: "bass_4",
-    bass_5: "bass_5",
-    ukelele: "ukelele"
-  }
-
-  @string_to_instrument %{
-    "guitar" => :guitar,
-    "bass_4" => :bass_4,
-    "bass_5" => :bass_5,
-    "ukelele" => :ukelele
-  }
+  @instrument_to_string Map.new(Instrument.instruments(), fn {key, _label} ->
+                          {key, Atom.to_string(key)}
+                        end)
+  @string_to_instrument Map.new(@instrument_to_string, fn {key, value} -> {value, key} end)
 
   @doc """
   Encodes a list of active chords into a comma-separated string.
@@ -271,8 +214,8 @@ defmodule Fretboard.Music.URLCodec do
       iex> Fretboard.Music.URLCodec.decode_chords(nil)
       []
   """
-  @spec decode_chords(String.t() | nil) :: [map()]
-  def decode_chords(nil), do: []
+  @spec decode_chords(term()) :: [map()]
+  def decode_chords(value) when not is_binary(value), do: []
   def decode_chords(""), do: []
 
   def decode_chords(str) do
@@ -286,7 +229,7 @@ defmodule Fretboard.Music.URLCodec do
 
   Returns standard guitar tuning if input is nil or invalid.
   """
-  @spec decode_tuning(String.t() | nil) :: [String.t()]
+  @spec decode_tuning(term()) :: [String.t()]
   def decode_tuning(str) do
     decode_tuning(str, :guitar)
   end
@@ -296,8 +239,8 @@ defmodule Fretboard.Music.URLCodec do
 
   Returns the instrument's standard tuning if input is nil or invalid.
   """
-  @spec decode_tuning(String.t() | nil, atom()) :: [String.t()]
-  def decode_tuning(nil, instrument) do
+  @spec decode_tuning(term(), atom()) :: [String.t()]
+  def decode_tuning(value, instrument) when not is_binary(value) do
     Instrument.instrument_standard_tuning(instrument)
   end
 
@@ -332,7 +275,7 @@ defmodule Fretboard.Music.URLCodec do
 
   Defaults to `:visualizer` when the param is missing or invalid.
   """
-  @spec decode_tab(String.t() | nil) :: :visualizer | :analyzer
+  @spec decode_tab(term()) :: :visualizer | :analyzer
   def decode_tab(nil), do: :visualizer
   def decode_tab(""), do: :visualizer
 
@@ -347,7 +290,7 @@ defmodule Fretboard.Music.URLCodec do
 
   Returns an empty map when the param is missing or invalid.
   """
-  @spec decode_marked_map(String.t() | nil) :: %{non_neg_integer() => non_neg_integer()}
+  @spec decode_marked_map(term()) :: %{non_neg_integer() => non_neg_integer()}
   def decode_marked_map(nil), do: %{}
   def decode_marked_map(""), do: %{}
 
@@ -436,8 +379,8 @@ defmodule Fretboard.Music.URLCodec do
   Decodes a comma-separated string of string-fret pairs into a list of {string, fret} tuples.
   Returns [] for nil or empty string. Silently skips invalid entries.
   """
-  @spec decode_marked(String.t() | nil) :: [{non_neg_integer(), non_neg_integer()}]
-  def decode_marked(nil), do: []
+  @spec decode_marked(term()) :: [{non_neg_integer(), non_neg_integer()}]
+  def decode_marked(value) when not is_binary(value), do: []
   def decode_marked(""), do: []
 
   def decode_marked(str) do

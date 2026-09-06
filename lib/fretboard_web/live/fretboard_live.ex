@@ -42,13 +42,11 @@ defmodule FretboardWeb.FretboardLive do
   @modal_modes MapSet.new([:major, :minor, :dorian, :phrygian, :lydian, :mixolydian, :locrian])
 
   @impl true
-  def mount(params, _session, socket) do
-    state = decode_socket_state(params)
-
+  def mount(_params, _session, socket) do
     {:ok,
      assign(
        socket,
-       Map.merge(state, %{
+       %{
          chord_form: %{"root" => "C", "quality" => "major"},
          chord_colors: @chord_colors,
          show_tuning_modal: false,
@@ -62,16 +60,21 @@ defmodule FretboardWeb.FretboardLive do
          progression_tonic: "C",
          key_suggestions: AsyncResult.loading(),
          multi_key_suggestions: AsyncResult.loading()
-       })
+       }
      )}
   end
 
-  defp decode_socket_state(params) do
+  defp decode_socket_state(params, previous) do
     {instrument, tuning_state, active_chords, highlighted_chord} =
       Music.decode_pitch_params(params)
 
     tuning = Music.tuning_notes(tuning_state)
-    fretboard = Music.fretboard_data(tuning, active_chords)
+
+    fretboard =
+      if tuning == previous[:tuning] and active_chords == previous[:active_chords],
+        do: previous.fretboard,
+        else: Music.fretboard_data(tuning, active_chords)
+
     string_count = Music.instrument_strings(instrument)
     tab = Music.decode_tab(params["tab"])
 
@@ -81,9 +84,17 @@ defmodule FretboardWeb.FretboardLive do
       |> Music.filter_marked_notes(string_count)
 
     analysis =
-      if tab == :analyzer,
-        do: Music.analyzer_state(marked_notes, tuning_state.pitches),
-        else: nil
+      cond do
+        tab != :analyzer ->
+          nil
+
+        previous[:tab] == :analyzer and marked_notes == previous[:marked_notes] and
+            tuning_state.pitches == get_in(previous, [:tuning_state, :pitches]) ->
+          previous.analysis
+
+        true ->
+          Music.analyzer_state(marked_notes, tuning_state.pitches)
+      end
 
     %{
       instrument: instrument,
@@ -120,21 +131,28 @@ defmodule FretboardWeb.FretboardLive do
 
   @impl true
   def handle_params(params, _uri, socket) do
-    state = decode_socket_state(params)
-    chords = state.active_chords
+    state = decode_socket_state(params, socket.assigns)
+    chords_changed? = socket.assigns[:active_chords] != state.active_chords
+    socket = assign(socket, Map.put(state, :show_key_modes, false))
 
-    {:noreply,
-     socket
-     |> assign(Map.put(state, :show_key_modes, false))
-     |> assign_async(:key_suggestions, fn ->
-       if length(chords) >= 2 do
-         suggestions = Music.suggest_keys(chords)
-         multi = multi_key_suggestions(suggestions, chords)
-         {:ok, %{key_suggestions: suggestions, multi_key_suggestions: multi}}
-       else
-         {:ok, %{key_suggestions: [], multi_key_suggestions: []}}
-       end
-     end)}
+    socket =
+      if chords_changed?,
+        do: assign_key_suggestions(socket, state.active_chords),
+        else: socket
+
+    {:noreply, socket}
+  end
+
+  defp assign_key_suggestions(socket, chords) do
+    assign_async(socket, [:key_suggestions, :multi_key_suggestions], fn ->
+      if length(chords) >= 2 do
+        suggestions = Music.suggest_keys(chords)
+        multi = multi_key_suggestions(suggestions, chords)
+        {:ok, %{key_suggestions: suggestions, multi_key_suggestions: multi}}
+      else
+        {:ok, %{key_suggestions: [], multi_key_suggestions: []}}
+      end
+    end)
   end
 
   defp multi_key_suggestions(suggestions, chords) do
@@ -392,7 +410,7 @@ defmodule FretboardWeb.FretboardLive do
 
   @impl true
   def handle_event("apply_suggested_key", %{"tonic" => tonic, "scale_type" => scale_type}, socket) do
-    mode = infer_chord_mode(socket.assigns.active_chords)
+    mode = Music.infer_chord_mode(socket.assigns.active_chords)
     active_chords = Music.diatonic_chords(tonic, String.to_existing_atom(scale_type), mode)
 
     {:noreply,
@@ -503,17 +521,6 @@ defmodule FretboardWeb.FretboardLive do
       <.modals {assigns} />
     </div>
     """
-  end
-
-  defp infer_chord_mode(active_chords) do
-    seventh_qualities =
-      MapSet.new([:"7", :maj7, :min7, :dim7, :m7b5, :min_maj7, :aug_maj7, :aug7])
-
-    if Enum.any?(active_chords, &MapSet.member?(seventh_qualities, &1.quality)) do
-      :seventh
-    else
-      :triad
-    end
   end
 
   # ---------------------------------------------------------------------------

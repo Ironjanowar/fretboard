@@ -70,6 +70,10 @@ defmodule Fretboard.Music do
   @spec instrument_preset_names(atom()) :: [String.t()]
   def instrument_preset_names(key), do: Instrument.instrument_preset_names(key)
 
+  @doc "Infers the existing triad/seventh mode for applying a suggested key."
+  @spec infer_chord_mode([map()]) :: :triad | :seventh
+  defdelegate infer_chord_mode(chords), to: Chord
+
   @doc """
   Returns available chord qualities.
   """

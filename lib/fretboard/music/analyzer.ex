@@ -51,7 +51,8 @@ defmodule Fretboard.Music.Analyzer do
         if Enum.uniq(pitches) == [pitch] do
           {:single, Pitch.note_name(pitch)}
         else
-          {:interval, Pitch.note_name(pitch), Pitch.note_name(pitch), "Octave"}
+          {:interval, Pitch.note_name(pitch), Pitch.note_name(pitch),
+           Pitch.interval_label(pitch, List.last(pitches))}
         end
 
       [low, high] ->

@@ -135,6 +135,24 @@ defmodule Fretboard.Music.Chord do
   }
 
   @doc """
+  Infers the triad/seventh mode used when applying a suggested key.
+
+  Preserves the original explicit seventh-quality classification; extended
+  and suspended qualities do not implicitly opt into seventh mode.
+  """
+  @spec infer_chord_mode([map()]) :: :triad | :seventh
+  def infer_chord_mode(active_chords) do
+    seventh_qualities =
+      MapSet.new([:"7", :maj7, :min7, :dim7, :m7b5, :min_maj7, :aug_maj7, :aug7])
+
+    if Enum.any?(active_chords, &MapSet.member?(seventh_qualities, &1.quality)) do
+      :seventh
+    else
+      :triad
+    end
+  end
+
+  @doc """
   Returns the list of available chord qualities.
   """
   @spec available_qualities() :: [atom()]
