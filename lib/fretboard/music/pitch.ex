@@ -38,7 +38,7 @@ defmodule Fretboard.Music.Pitch do
     semitones = abs(pitch_b - pitch_a)
 
     cond do
-      semitones == 0 -> "Perfect Unison"
+      semitones == 0 -> Intervals.name(0)
       rem(semitones, 12) == 0 -> "Octave"
       true -> Intervals.name(rem(semitones, 12))
     end

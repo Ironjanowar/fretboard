@@ -25,6 +25,11 @@ defmodule FretboardWeb.Modals do
   attr :instrument, :atom, required: true
   attr :string_count, :integer, required: true
 
+  def tuning_modal(%{show: false} = assigns) do
+    ~H"""
+    """
+  end
+
   def tuning_modal(assigns) do
     assigns =
       assign(

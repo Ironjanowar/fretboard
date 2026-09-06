@@ -83,6 +83,11 @@ lib/
 
 **Key design rule:** The web layer talks only to `Fretboard.Music` (the facade module). Internal music modules are never called directly from LiveView.
 
+URL decoding rejects incorrectly typed fields independently, preserving valid siblings;
+exact `pitches` take precedence over legacy tuning names. `handle_params` owns URL state
+and refreshes expensive derived values only when their inputs change; regression tests
+pin call counts so recomputation stays lean.
+
 ## 📄 License
 
 MIT
