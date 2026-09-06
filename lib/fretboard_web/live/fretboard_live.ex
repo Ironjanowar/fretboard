@@ -359,20 +359,25 @@ defmodule FretboardWeb.FretboardLive do
   @impl true
   def handle_event("change_instrument", %{"instrument" => instrument_str}, socket) do
     new_instrument = String.to_existing_atom(instrument_str)
-    new_tuning = Music.instrument_standard_tuning(new_instrument)
-    new_string_count = Music.instrument_strings(new_instrument)
-    filtered_marked = Music.filter_marked_notes(socket.assigns.marked_notes, new_string_count)
 
-    {:noreply,
-     push_analyzer_patch(
-       socket,
-       new_instrument,
-       new_tuning,
-       socket.assigns.active_chords,
-       nil,
-       socket.assigns.tab,
-       filtered_marked
-     )}
+    if new_instrument == socket.assigns.instrument do
+      {:noreply, socket}
+    else
+      new_tuning = Music.instrument_standard_tuning(new_instrument)
+      new_string_count = Music.instrument_strings(new_instrument)
+      filtered_marked = Music.filter_marked_notes(socket.assigns.marked_notes, new_string_count)
+
+      {:noreply,
+       push_analyzer_patch(
+         socket,
+         new_instrument,
+         new_tuning,
+         socket.assigns.active_chords,
+         nil,
+         socket.assigns.tab,
+         filtered_marked
+       )}
+    end
   end
 
   @impl true
