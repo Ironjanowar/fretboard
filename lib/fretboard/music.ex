@@ -9,6 +9,12 @@ defmodule Fretboard.Music do
 
   alias Fretboard.Music.{Analyzer, Chord, Instrument, Note, Pitch, Progression, Scale, URLCodec}
 
+  @typedoc """
+  A tuning state: the exact MIDI pitches of every open string plus the
+  preset name (`"Standard"`, `"Low G"`, ...) the state is anchored to.
+  """
+  @type tuning_state() :: %{pitches: [integer], reference: String.t()}
+
   @doc """
   Returns standard guitar tuning.
   """
@@ -216,6 +222,32 @@ defmodule Fretboard.Music do
   end
 
   @doc """
+  Encodes tuning and active chords into URL query params.
+  """
+  @spec encode_params([String.t()], [map()]) :: map()
+  def encode_params(tuning, active_chords), do: URLCodec.encode_params(tuning, active_chords)
+
+  @doc """
+  Encodes tuning, active chords, and highlighted index into URL query params.
+  """
+  @spec encode_params([String.t()], [map()], non_neg_integer() | nil) :: map()
+  def encode_params(tuning, active_chords, highlighted_index),
+    do: URLCodec.encode_params(tuning, active_chords, highlighted_index)
+
+  @doc """
+  Encodes instrument, tuning, active chords, and highlighted index into URL query params.
+  """
+  @spec encode_params(atom(), [String.t()], [map()], non_neg_integer() | nil) :: map()
+  def encode_params(instrument, tuning, active_chords, highlighted_index),
+    do: URLCodec.encode_params(instrument, tuning, active_chords, highlighted_index)
+
+  @doc """
+  Decodes URL query params into `{instrument, tuning, active_chords, highlighted_index}`.
+  """
+  @spec decode_params(map()) :: {atom(), [String.t()], [map()], non_neg_integer() | nil}
+  def decode_params(params), do: URLCodec.decode_params(params)
+
+  @doc """
   Decodes the `tab` query param into `:visualizer` or `:analyzer`.
 
   Defaults to `:visualizer` when the param is missing or invalid.
@@ -266,6 +298,28 @@ defmodule Fretboard.Music do
   @spec note_index(String.t()) :: non_neg_integer()
   def note_index(note), do: Note.note_index(note)
 
+  @doc """
+  Identifies possible chord interpretations for a collection of notes,
+  given a bass note, annotating each result with its inversion and a
+  slash-chord label.
+
+  Returns a list of result maps with `:root`, `:quality`, `:exact`,
+  `:notes`, `:intervals`, `:bass`, `:inversion`, and `:slash_label`.
+
+  Returns `[]` when fewer than 3 unique pitch classes are present.
+  """
+  @spec analyze_notes([String.t()], String.t()) :: [map()]
+  def analyze_notes(notes, bass_note), do: Chord.identify(notes, bass_note)
+
+  @doc """
+  Identifies possible chord interpretations for a collection of notes
+  without a bass note.
+
+  Returns `[]` when fewer than 3 unique pitch classes are present.
+  """
+  @spec analyze_notes([String.t()]) :: [map()]
+  def analyze_notes(notes), do: Chord.identify(notes)
+
   @doc "Returns chromatic display names without octave notation."
   def chromatic_scale, do: Note.chromatic_scale()
 
@@ -273,6 +327,7 @@ defmodule Fretboard.Music do
   def instrument_pitch_presets(instrument), do: Instrument.instrument_pitch_presets(instrument)
 
   @doc "Builds a tuning state from a known preset, or returns nil."
+  @spec preset_tuning(atom(), String.t()) :: tuning_state() | nil
   def preset_tuning(instrument, name) do
     case Instrument.preset_pitches(instrument, name) do
       nil -> nil
@@ -284,6 +339,8 @@ defmodule Fretboard.Music do
   def tuning_notes(%{pitches: pitches}), do: Enum.map(pitches, &Pitch.note_name/1)
 
   @doc "Edits one string nearest to the unchanged starting preset reference."
+  @spec change_tuning_note(atom(), tuning_state(), non_neg_integer(), String.t()) ::
+          tuning_state()
   def change_tuning_note(instrument, state, index, note) do
     references = Instrument.preset_pitches(instrument, state.reference)
     [pitch] = Pitch.string_pitches([Enum.at(references, index)], [note])
@@ -291,9 +348,12 @@ defmodule Fretboard.Music do
   end
 
   @doc "Encodes exact tuning state, chords and highlight for a shareable URL."
+  @spec encode_pitch_params(atom(), tuning_state(), [map()], non_neg_integer() | nil) :: map()
   defdelegate encode_pitch_params(instrument, state, chords, highlight), to: URLCodec
 
   @doc "Decodes exact tuning state with safe legacy note-only compatibility."
+  @spec decode_pitch_params(map()) ::
+          {atom(), tuning_state(), [map()], non_neg_integer() | nil}
   defdelegate decode_pitch_params(params), to: URLCodec
 
   @doc """
@@ -306,7 +366,7 @@ defmodule Fretboard.Music do
     - `{:interval, note_low, note_high, label}` — two pitch classes ordered
       by their lowest heights, or one class at distinct heights (Octave)
     - `{:chords, notes, bass, interpretations}` — three or more pitch classes;
-      `bass` is the lowest sounding pitch
+      `bass` is the note name of the lowest sounding pitch
   """
   @spec analyzer_state(%{non_neg_integer() => non_neg_integer()}, [integer()]) ::
           {:empty}

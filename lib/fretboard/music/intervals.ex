@@ -33,6 +33,6 @@ defmodule Fretboard.Music.Intervals do
       iex> Fretboard.Music.Intervals.name(11)
       "Major 7th"
   """
-  @spec name(non_neg_integer()) :: String.t()
+  @spec name(0..11) :: String.t()
   def name(semitones), do: Map.fetch!(@interval_names, semitones)
 end

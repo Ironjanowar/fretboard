@@ -27,7 +27,7 @@ defmodule Fretboard.Music.Analyzer do
       by the lowest height of each class; or one class at distinct heights
       (Octave)
     * `{:chords, notes, bass, interpretations}` — three or more pitch classes,
-      with `bass` being the lowest sounding pitch
+      with `bass` being the note name of the lowest sounding pitch
   """
   @spec analyzer_state(%{non_neg_integer() => non_neg_integer()}, [integer()]) ::
           {:empty}

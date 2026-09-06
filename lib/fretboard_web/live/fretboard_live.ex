@@ -227,17 +227,23 @@ defmodule FretboardWeb.FretboardLive do
 
   @impl true
   def handle_event("change_string", %{"string" => string_str, "note" => note}, socket) do
-    string_idx = String.to_integer(string_str)
+    string_count = Music.instrument_strings(socket.assigns.instrument)
 
-    state =
-      Music.change_tuning_note(
-        socket.assigns.instrument,
-        socket.assigns.modal_tuning_state,
-        string_idx,
-        note
-      )
+    with {string_idx, ""} <- Integer.parse(string_str),
+         true <- string_idx in 0..(string_count - 1),
+         true <- note in Music.chromatic_scale() do
+      state =
+        Music.change_tuning_note(
+          socket.assigns.instrument,
+          socket.assigns.modal_tuning_state,
+          string_idx,
+          note
+        )
 
-    {:noreply, assign(socket, modal_tuning_state: state)}
+      {:noreply, assign(socket, modal_tuning_state: state)}
+    else
+      _invalid -> {:noreply, socket}
+    end
   end
 
   @impl true
