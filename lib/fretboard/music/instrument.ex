@@ -1,139 +1,118 @@
 defmodule Fretboard.Music.Instrument do
   @moduledoc """
-  Instrument definitions for the fretboard.
-
-  Provides metadata for supported instruments (guitar, 4-string bass,
-  5-string bass) including string count, standard tuning, tuning presets,
-  and fret count.
+  Instrument metadata and tuning presets. MIDI pitches are the single source
+  of tuning data; legacy note-name APIs are derived from this catalog.
+  String order is physical, not pitch order (ukelele Standard is high-G).
   """
 
-  @guitar_presets [
-    {"Standard", ["E", "A", "D", "G", "B", "E"]},
-    {"Drop D", ["D", "A", "D", "G", "B", "E"]},
-    {"DADGAD", ["D", "A", "D", "G", "A", "D"]},
-    {"Open G", ["D", "G", "D", "G", "B", "D"]},
-    {"Open D", ["D", "A", "D", "F#", "A", "D"]},
-    {"Open E", ["E", "B", "E", "G#", "B", "E"]},
-    {"Half Step Down", ["D#", "G#", "C#", "F#", "A#", "D#"]},
-    {"Full Step Down", ["D", "G", "C", "F", "A", "D"]},
-    {"Drop C", ["C", "G", "C", "F", "A", "D"]}
-  ]
-
-  @bass_4_presets [
-    {"Standard", ["E", "A", "D", "G"]},
-    {"Drop D", ["D", "A", "D", "G"]},
-    {"Half Step Down", ["D#", "G#", "C#", "F#"]}
-  ]
-
-  @bass_5_presets [
-    {"Standard", ["B", "E", "A", "D", "G"]},
-    {"Half Step Down", ["A#", "D#", "G#", "C#", "F#"]},
-    {"Drop A", ["A", "E", "A", "D", "G"]}
-  ]
-
-  @ukelele_presets [
-    {"Standard", ["G", "C", "E", "A"]},
-    {"D tuning", ["A", "D", "F#", "B"]},
-    {"Baritone", ["D", "G", "B", "E"]},
-    {"Half Step Down", ["F#", "B", "D#", "G#"]}
-  ]
+  alias Fretboard.Music.Pitch
 
   @instruments %{
     guitar: %{
       name: "Guitar",
       strings: 6,
-      standard_tuning: ["E", "A", "D", "G", "B", "E"],
-      presets: @guitar_presets,
-      frets: 24
+      frets: 24,
+      pitch_presets: [
+        {"Standard", [40, 45, 50, 55, 59, 64]},
+        {"Drop D", [38, 45, 50, 55, 59, 64]},
+        {"DADGAD", [38, 45, 50, 55, 57, 62]},
+        {"Open G", [38, 43, 50, 55, 59, 62]},
+        {"Open D", [38, 45, 50, 54, 57, 62]},
+        {"Open E", [40, 47, 52, 56, 59, 64]},
+        {"Half Step Down", [39, 44, 49, 54, 58, 63]},
+        {"Full Step Down", [38, 43, 48, 53, 57, 62]},
+        {"Drop C", [36, 43, 48, 53, 57, 62]}
+      ]
     },
     bass_4: %{
       name: "Bass (4-string)",
       strings: 4,
-      standard_tuning: ["E", "A", "D", "G"],
-      presets: @bass_4_presets,
-      frets: 24
+      frets: 24,
+      pitch_presets: [
+        {"Standard", [28, 33, 38, 43]},
+        {"Drop D", [26, 33, 38, 43]},
+        {"Half Step Down", [27, 32, 37, 42]}
+      ]
     },
     bass_5: %{
       name: "Bass (5-string)",
       strings: 5,
-      standard_tuning: ["B", "E", "A", "D", "G"],
-      presets: @bass_5_presets,
-      frets: 24
+      frets: 24,
+      pitch_presets: [
+        {"Standard", [23, 28, 33, 38, 43]},
+        {"Half Step Down", [22, 27, 32, 37, 42]},
+        {"Drop A", [21, 28, 33, 38, 43]}
+      ]
     },
     ukelele: %{
       name: "Ukelele",
       strings: 4,
-      standard_tuning: ["G", "C", "E", "A"],
-      presets: @ukelele_presets,
-      frets: 24
+      frets: 24,
+      pitch_presets: [
+        {"Standard", [67, 60, 64, 69]},
+        {"Low G", [55, 60, 64, 69]},
+        {"D tuning", [69, 62, 66, 71]},
+        {"Baritone", [50, 55, 59, 64]},
+        {"Half Step Down", [66, 59, 63, 68]}
+      ]
     }
   }
-
+  @instrument_keys [:guitar, :bass_4, :bass_5, :ukelele]
   @type instrument_key :: :guitar | :bass_4 | :bass_5 | :ukelele
   @type preset :: {String.t(), [String.t()]}
 
-  @instrument_keys [:guitar, :bass_4, :bass_5, :ukelele]
+  @doc "Returns supported instrument keys and labels in display order."
+  @spec instruments() :: [{instrument_key(), String.t()}]
+  def instruments, do: Enum.map(@instrument_keys, &{&1, @instruments[&1].name})
 
-  @doc """
-  Returns a list of `{key, label}` tuples for all supported instruments.
-  """
-  @spec instruments() :: [{atom(), String.t()}]
-  def instruments do
-    [
-      {:guitar, "Guitar"},
-      {:bass_4, "Bass (4-string)"},
-      {:bass_5, "Bass (5-string)"},
-      {:ukelele, "Ukelele"}
-    ]
-  end
-
-  @doc """
-  Returns the full instrument definition map for the given instrument key.
-
-  The map contains `:name`, `:strings`, `:standard_tuning`, `:presets`, and
-  `:frets`. Returns `nil` for unknown instruments.
-  """
-  @spec instrument(instrument_key() | atom()) :: map() | nil
+  @doc "Returns instrument metadata, including derived legacy tuning fields, or nil."
+  @spec instrument(atom()) :: map() | nil
   def instrument(key) when key in @instrument_keys do
-    Map.get(@instruments, key)
+    Map.merge(@instruments[key], %{
+      standard_pitches: instrument_standard_pitches(key),
+      standard_tuning: instrument_standard_tuning(key),
+      presets: instrument_tuning_presets(key)
+    })
   end
 
   def instrument(_key), do: nil
 
-  @doc """
-  Returns the number of strings for the given instrument.
-  """
+  @doc "Returns the instrument string count."
   @spec instrument_strings(instrument_key()) :: pos_integer()
-  def instrument_strings(key) when key in @instrument_keys do
-    instrument(key).strings
-  end
+  def instrument_strings(key) when key in @instrument_keys, do: @instruments[key].strings
 
-  @doc """
-  Returns the standard tuning (list of note names, low to high) for the
-  given instrument.
-  """
+  @doc "Returns the standard note names in physical string order."
   @spec instrument_standard_tuning(instrument_key()) :: [String.t()]
-  def instrument_standard_tuning(key) when key in @instrument_keys do
-    instrument(key).standard_tuning
+  def instrument_standard_tuning(key),
+    do: Enum.map(instrument_standard_pitches(key), &Pitch.note_name/1)
+
+  @doc "Returns the standard absolute open-string MIDI pitches."
+  @spec instrument_standard_pitches(instrument_key()) :: [integer()]
+  def instrument_standard_pitches(key), do: preset_pitches(key, "Standard")
+
+  @doc "Returns all named MIDI pitch presets."
+  @spec instrument_pitch_presets(instrument_key()) :: [{String.t(), [integer()]}]
+  def instrument_pitch_presets(key) when key in @instrument_keys,
+    do: @instruments[key].pitch_presets
+
+  @doc "Returns a named preset's pitches, or nil for an unknown name."
+  @spec preset_pitches(instrument_key(), String.t()) :: [integer()] | nil
+  def preset_pitches(key, name) do
+    case List.keyfind(instrument_pitch_presets(key), name, 0) do
+      {_, pitches} -> pitches
+      nil -> nil
+    end
   end
 
-  @doc """
-  Returns the list of tuning presets for the given instrument.
-
-  Each preset is a tuple of `{name, notes}`.
-  """
+  @doc "Returns legacy named note lists derived from the MIDI catalog."
   @spec instrument_tuning_presets(instrument_key()) :: [preset()]
-  def instrument_tuning_presets(key) when key in @instrument_keys do
-    instrument(key).presets
+  def instrument_tuning_presets(key) do
+    Enum.map(instrument_pitch_presets(key), fn {name, pitches} ->
+      {name, Enum.map(pitches, &Pitch.note_name/1)}
+    end)
   end
 
-  @doc """
-  Returns just the names of all tuning presets for the given instrument.
-  """
+  @doc "Returns preset names in display order."
   @spec instrument_preset_names(instrument_key()) :: [String.t()]
-  def instrument_preset_names(key) when key in @instrument_keys do
-    key
-    |> instrument_tuning_presets()
-    |> Enum.map(&elem(&1, 0))
-  end
+  def instrument_preset_names(key), do: Enum.map(instrument_pitch_presets(key), &elem(&1, 0))
 end

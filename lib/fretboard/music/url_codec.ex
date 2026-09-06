@@ -5,7 +5,90 @@ defmodule Fretboard.Music.URLCodec do
   Enables shareable URLs that restore instrument, tuning, and active chords.
   """
 
-  alias Fretboard.Music.{Chord, Instrument, Note}
+  alias Fretboard.Music.{Chord, Instrument, Note, Pitch}
+
+  @doc """
+  Encodes exact MIDI pitches and the fixed editing reference. Defaults are
+  omitted; legacy tuning names are retained for older clients. Non-standard
+  references always include pitches, even when those pitches are Standard.
+  """
+  def encode_pitch_params(
+        instrument,
+        %{pitches: pitches, reference: reference},
+        chords,
+        highlight
+      ) do
+    params = encode_params(instrument, Enum.map(pitches, &Pitch.note_name/1), chords, highlight)
+
+    if pitches == Instrument.instrument_standard_pitches(instrument) and reference == "Standard" do
+      params
+    else
+      params
+      |> Map.put("pitches", Enum.join(pitches, ","))
+      |> maybe_put("reference", if(reference == "Standard", do: nil, else: reference))
+    end
+  end
+
+  @doc """
+  Decodes `{instrument, %{pitches: pitches, reference: name}, chords, highlight}`.
+
+  A present `pitches` parameter is authoritative over `tuning`: it must be a
+  comma-separated string of exactly the instrument's string count of MIDI
+  integers (0..127). Invalid pitches reset both pitches and reference to
+  Standard, never to conflicting legacy notes. Invalid references independently
+  fall back to Standard and are checked against that instrument's catalog.
+  With no `pitches`, legacy notes resolve nearest to Standard, ignoring reference
+  and never inferring a preset from matching note names.
+  """
+  def decode_pitch_params(params) do
+    instrument = decode_instrument(params["instrument"])
+    chords = decode_chords(params["chords"])
+    highlight = find_highlighted_index(params["highlight"], chords)
+
+    standard = %{
+      pitches: Instrument.instrument_standard_pitches(instrument),
+      reference: "Standard"
+    }
+
+    state = decode_pitch_state(params, instrument, standard)
+    {instrument, state, chords, highlight}
+  end
+
+  defp decode_pitch_state(%{"pitches" => value} = params, instrument, standard) do
+    case parse_pitches(value, Instrument.instrument_strings(instrument)) do
+      {:ok, pitches} ->
+        reference = params["reference"]
+
+        reference =
+          if reference in Instrument.instrument_preset_names(instrument),
+            do: reference,
+            else: "Standard"
+
+        %{pitches: pitches, reference: reference}
+
+      :error ->
+        standard
+    end
+  end
+
+  defp decode_pitch_state(params, instrument, standard) do
+    tuning = decode_tuning(params["tuning"], instrument)
+    %{standard | pitches: Pitch.string_pitches(standard.pitches, tuning)}
+  end
+
+  defp parse_pitches(value, count) when is_binary(value) do
+    parsed = value |> String.split(",") |> Enum.map(&Integer.parse/1)
+
+    if length(parsed) == count and Enum.all?(parsed, &valid_pitch?/1) do
+      {:ok, Enum.map(parsed, &elem(&1, 0))}
+    else
+      :error
+    end
+  end
+
+  defp parse_pitches(_, _), do: :error
+  defp valid_pitch?({pitch, ""}) when pitch in 0..127, do: true
+  defp valid_pitch?(_), do: false
 
   @labels_to_quality %{
     "maj" => :major,

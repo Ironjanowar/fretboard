@@ -9,7 +9,6 @@ defmodule FretboardWeb.Modals do
   use FretboardWeb, :html
 
   alias Fretboard.Music
-  alias Fretboard.Music.Note
 
   @doc """
   Returns the chord color at a given index, cycling through the color palette.
@@ -22,12 +21,20 @@ defmodule FretboardWeb.Modals do
   # --- Tuning Modal ---
 
   attr :show, :boolean, required: true
-  attr :modal_preset, :string, required: true
+  attr :modal_tuning_state, :map, required: true
   attr :instrument, :atom, required: true
-  attr :modal_tuning, :list, required: true
   attr :string_count, :integer, required: true
 
   def tuning_modal(assigns) do
+    assigns =
+      assign(
+        assigns,
+        :modal_preset,
+        Music.detect_preset(assigns.instrument, assigns.modal_tuning_state.pitches)
+      )
+
+    assigns = assign(assigns, :modal_tuning, Music.tuning_notes(assigns.modal_tuning_state))
+
     ~H"""
     <%= if @show do %>
       <div
@@ -75,7 +82,7 @@ defmodule FretboardWeb.Modals do
                   class="form-select-full string-select"
                   name="note"
                 >
-                  <%= for note <- Note.chromatic_scale() do %>
+                  <%= for note <- Music.chromatic_scale() do %>
                     <option value={note} selected={note == current_note}>
                       {note}
                     </option>
@@ -137,7 +144,7 @@ defmodule FretboardWeb.Modals do
                   class="form-select-full"
                   name="key[tonic]"
                 >
-                  <%= for note <- Note.chromatic_scale() do %>
+                  <%= for note <- Music.chromatic_scale() do %>
                     <option value={note} selected={@key_tonic == note}>{note}</option>
                   <% end %>
                 </select>
@@ -262,7 +269,7 @@ defmodule FretboardWeb.Modals do
                   class="form-select-full"
                   name="progression[tonic]"
                 >
-                  <%= for note <- Note.chromatic_scale() do %>
+                  <%= for note <- Music.chromatic_scale() do %>
                     <option value={note} selected={@progression_tonic == note}>{note}</option>
                   <% end %>
                 </select>

@@ -3,10 +3,17 @@ defmodule Fretboard.Music do
   Public API facade for all music domain logic.
 
   This is the only module that `FretboardWeb` should call.
-  It delegates to `Note`, `Chord`, `Instrument`, and `Scale` internally.
+  It delegates to `Note`, `Chord`, `Instrument`, `Scale`, `Pitch`, and
+  `Analyzer` internally.
   """
 
-  alias Fretboard.Music.{Chord, Instrument, Note, Progression, Scale, URLCodec}
+  alias Fretboard.Music.{Analyzer, Chord, Instrument, Note, Pitch, Progression, Scale, URLCodec}
+
+  @typedoc """
+  A tuning state: the exact MIDI pitches of every open string plus the
+  preset name (`"Standard"`, `"Low G"`, ...) the state is anchored to.
+  """
+  @type tuning_state() :: %{pitches: [integer], reference: String.t()}
 
   @doc """
   Returns standard guitar tuning.
@@ -312,6 +319,77 @@ defmodule Fretboard.Music do
   """
   @spec analyze_notes([String.t()]) :: [map()]
   def analyze_notes(notes), do: Chord.identify(notes)
+
+  @doc "Returns chromatic display names without octave notation."
+  def chromatic_scale, do: Note.chromatic_scale()
+
+  @doc "Returns named absolute-pitch presets."
+  def instrument_pitch_presets(instrument), do: Instrument.instrument_pitch_presets(instrument)
+
+  @doc "Builds a tuning state from a known preset, or returns nil."
+  @spec preset_tuning(atom(), String.t()) :: tuning_state() | nil
+  def preset_tuning(instrument, name) do
+    case Instrument.preset_pitches(instrument, name) do
+      nil -> nil
+      pitches -> %{pitches: pitches, reference: name}
+    end
+  end
+
+  @doc "Derives display names from a tuning state's exact pitches."
+  def tuning_notes(%{pitches: pitches}), do: Enum.map(pitches, &Pitch.note_name/1)
+
+  @doc "Edits one string nearest to the unchanged starting preset reference."
+  @spec change_tuning_note(atom(), tuning_state(), non_neg_integer(), String.t()) ::
+          tuning_state()
+  def change_tuning_note(instrument, state, index, note) do
+    references = Instrument.preset_pitches(instrument, state.reference)
+    [pitch] = Pitch.string_pitches([Enum.at(references, index)], [note])
+    %{state | pitches: List.replace_at(state.pitches, index, pitch)}
+  end
+
+  @doc "Encodes exact tuning state, chords and highlight for a shareable URL."
+  @spec encode_pitch_params(atom(), tuning_state(), [map()], non_neg_integer() | nil) :: map()
+  defdelegate encode_pitch_params(instrument, state, chords, highlight), to: URLCodec
+
+  @doc "Decodes exact tuning state with safe legacy note-only compatibility."
+  @spec decode_pitch_params(map()) ::
+          {atom(), tuning_state(), [map()], non_neg_integer() | nil}
+  defdelegate decode_pitch_params(params), to: URLCodec
+
+  @doc """
+  Computes the analysis state from the marked positions (string index
+  to fret) and the open-string pitches of the current tuning.
+
+  Returns one of:
+    - `{:empty}` — no notes marked
+    - `{:single, note}` — one unique sounding pitch
+    - `{:interval, note_low, note_high, label}` — two pitch classes ordered
+      by their lowest heights, or one class at distinct heights (Octave)
+    - `{:chords, notes, bass, interpretations}` — three or more pitch classes;
+      `bass` is the note name of the lowest sounding pitch
+  """
+  @spec analyzer_state(%{non_neg_integer() => non_neg_integer()}, [integer()]) ::
+          {:empty}
+          | {:single, String.t()}
+          | {:interval, String.t(), String.t(), String.t()}
+          | {:chords, [String.t()], String.t(), [map()]}
+  def analyzer_state(marked_notes, string_pitches),
+    do: Analyzer.analyzer_state(marked_notes, string_pitches)
+
+  @doc """
+  Detects which named pitch preset matches a tuning, or "Custom".
+
+  The comparison is by exact pitches, never by derived note names.
+  """
+  @spec detect_preset(atom(), [integer()]) :: String.t()
+  def detect_preset(instrument, pitches) do
+    case Enum.find(Instrument.instrument_pitch_presets(instrument), fn {_name, preset} ->
+           preset == pitches
+         end) do
+      {name, _pitches} -> name
+      nil -> "Custom"
+    end
+  end
 
   defp build_chord_lookup(active_chords) do
     Enum.reduce(active_chords, %{}, fn %{root: root, quality: quality}, acc ->
