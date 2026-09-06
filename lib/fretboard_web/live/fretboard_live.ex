@@ -14,7 +14,6 @@ defmodule FretboardWeb.FretboardLive do
   import Phoenix.LiveView.JS, only: [toggle: 1]
 
   alias Fretboard.Music
-  alias Fretboard.Music.Note
   alias Phoenix.LiveView.AsyncResult
 
   @fret_count 24
@@ -52,7 +51,6 @@ defmodule FretboardWeb.FretboardLive do
        Map.merge(state, %{
          chord_form: %{"root" => "C", "quality" => "major"},
          chord_colors: @chord_colors,
-         chromatic_notes: Note.chromatic_scale(),
          show_tuning_modal: false,
          show_key_modal: false,
          key_tonic: "C",
@@ -69,7 +67,10 @@ defmodule FretboardWeb.FretboardLive do
   end
 
   defp decode_socket_state(params) do
-    {instrument, tuning, active_chords, highlighted_chord} = Music.decode_params(params)
+    {instrument, tuning_state, active_chords, highlighted_chord} =
+      Music.decode_pitch_params(params)
+
+    tuning = Music.tuning_notes(tuning_state)
     fretboard = Music.fretboard_data(tuning, active_chords)
     string_count = Music.instrument_strings(instrument)
     tab = Music.decode_tab(params["tab"])
@@ -79,17 +80,20 @@ defmodule FretboardWeb.FretboardLive do
       |> Music.decode_marked()
       |> Music.filter_marked_notes(string_count)
 
-    analysis = if tab == :analyzer, do: analyzer_state(marked_notes, tuning), else: nil
+    analysis =
+      if tab == :analyzer,
+        do: Music.analyzer_state(marked_notes, tuning_state.pitches),
+        else: nil
 
     %{
       instrument: instrument,
       tuning: tuning,
+      tuning_state: tuning_state,
       active_chords: active_chords,
       highlighted_chord: highlighted_chord,
       fretboard: fretboard,
       svg: svg_params(string_count),
-      modal_tuning: tuning,
-      modal_preset: detect_preset(tuning, instrument),
+      modal_tuning_state: tuning_state,
       tab: tab,
       marked_notes: marked_notes,
       analysis: analysis
@@ -159,7 +163,7 @@ defmodule FretboardWeb.FretboardLive do
        push_url_patch(
          socket,
          socket.assigns.instrument,
-         socket.assigns.tuning,
+         socket.assigns.tuning_state,
          active_chords,
          socket.assigns.highlighted_chord
        )}
@@ -190,7 +194,7 @@ defmodule FretboardWeb.FretboardLive do
      push_url_patch(
        socket,
        socket.assigns.instrument,
-       socket.assigns.tuning,
+       socket.assigns.tuning_state,
        active_chords,
        highlighted_chord
      )}
@@ -201,8 +205,7 @@ defmodule FretboardWeb.FretboardLive do
     {:noreply,
      assign(socket,
        show_tuning_modal: true,
-       modal_tuning: socket.assigns.tuning,
-       modal_preset: detect_preset(socket.assigns.tuning, socket.assigns.instrument)
+       modal_tuning_state: socket.assigns.tuning_state
      )}
   end
 
@@ -213,11 +216,9 @@ defmodule FretboardWeb.FretboardLive do
 
   @impl true
   def handle_event("select_preset", %{"preset" => preset_name}, socket) do
-    presets = Music.instrument_tuning_presets(socket.assigns.instrument)
-
-    case Enum.find(presets, fn {name, _} -> name == preset_name end) do
-      {_name, notes} ->
-        {:noreply, assign(socket, modal_tuning: notes, modal_preset: preset_name)}
+    case Music.preset_tuning(socket.assigns.instrument, preset_name) do
+      %{pitches: _} = state ->
+        {:noreply, assign(socket, modal_tuning_state: state)}
 
       nil ->
         {:noreply, socket}
@@ -227,18 +228,21 @@ defmodule FretboardWeb.FretboardLive do
   @impl true
   def handle_event("change_string", %{"string" => string_str, "note" => note}, socket) do
     string_idx = String.to_integer(string_str)
-    modal_tuning = List.replace_at(socket.assigns.modal_tuning, string_idx, note)
 
-    {:noreply,
-     assign(socket,
-       modal_tuning: modal_tuning,
-       modal_preset: detect_preset(modal_tuning, socket.assigns.instrument)
-     )}
+    state =
+      Music.change_tuning_note(
+        socket.assigns.instrument,
+        socket.assigns.modal_tuning_state,
+        string_idx,
+        note
+      )
+
+    {:noreply, assign(socket, modal_tuning_state: state)}
   end
 
   @impl true
   def handle_event("apply_tuning", _params, socket) do
-    tuning = socket.assigns.modal_tuning
+    tuning = socket.assigns.modal_tuning_state
 
     {:noreply,
      socket
@@ -298,7 +302,7 @@ defmodule FretboardWeb.FretboardLive do
     {:noreply,
      socket
      |> assign(show_key_modal: false)
-     |> push_url_patch(socket.assigns.instrument, socket.assigns.tuning, active_chords, nil)}
+     |> push_url_patch(socket.assigns.instrument, socket.assigns.tuning_state, active_chords, nil)}
   end
 
   @impl true
@@ -334,7 +338,7 @@ defmodule FretboardWeb.FretboardLive do
     {:noreply,
      socket
      |> assign(show_progression_modal: false)
-     |> push_url_patch(socket.assigns.instrument, socket.assigns.tuning, active_chords, nil)}
+     |> push_url_patch(socket.assigns.instrument, socket.assigns.tuning_state, active_chords, nil)}
   end
 
   @impl true
@@ -350,7 +354,7 @@ defmodule FretboardWeb.FretboardLive do
      push_url_patch(
        socket,
        socket.assigns.instrument,
-       socket.assigns.tuning,
+       socket.assigns.tuning_state,
        socket.assigns.active_chords,
        highlighted_chord
      )}
@@ -363,7 +367,7 @@ defmodule FretboardWeb.FretboardLive do
     if new_instrument == socket.assigns.instrument do
       {:noreply, socket}
     else
-      new_tuning = Music.instrument_standard_tuning(new_instrument)
+      new_tuning = Music.preset_tuning(new_instrument, "Standard")
       new_string_count = Music.instrument_strings(new_instrument)
       filtered_marked = Music.filter_marked_notes(socket.assigns.marked_notes, new_string_count)
 
@@ -386,7 +390,13 @@ defmodule FretboardWeb.FretboardLive do
     active_chords = Music.diatonic_chords(tonic, String.to_existing_atom(scale_type), mode)
 
     {:noreply,
-     push_url_patch(socket, socket.assigns.instrument, socket.assigns.tuning, active_chords, nil)}
+     push_url_patch(
+       socket,
+       socket.assigns.instrument,
+       socket.assigns.tuning_state,
+       active_chords,
+       nil
+     )}
   end
 
   @impl true
@@ -409,7 +419,7 @@ defmodule FretboardWeb.FretboardLive do
        push_analyzer_patch(
          socket,
          socket.assigns.instrument,
-         socket.assigns.tuning,
+         socket.assigns.tuning_state,
          socket.assigns.active_chords,
          socket.assigns.highlighted_chord,
          target_tab,
@@ -434,17 +444,11 @@ defmodule FretboardWeb.FretboardLive do
         Map.put(socket.assigns.marked_notes, string, fret)
       end
 
-    # Pre-compute analysis here so the re-render triggered by push_patch
-    # already has the updated value. handle_params will re-compute it
-    # too, but the immediate re-render needs it now.
-    new_analysis = analyzer_state(new_marked, socket.assigns.tuning)
-
     {:noreply,
      socket
-     |> assign(marked_notes: new_marked, analysis: new_analysis)
      |> push_analyzer_patch(
        socket.assigns.instrument,
-       socket.assigns.tuning,
+       socket.assigns.tuning_state,
        socket.assigns.active_chords,
        socket.assigns.highlighted_chord,
        socket.assigns.tab,
@@ -456,10 +460,9 @@ defmodule FretboardWeb.FretboardLive do
   def handle_event("clear_notes", _params, socket) do
     {:noreply,
      socket
-     |> assign(marked_notes: %{}, analysis: {:empty})
      |> push_analyzer_patch(
        socket.assigns.instrument,
-       socket.assigns.tuning,
+       socket.assigns.tuning_state,
        socket.assigns.active_chords,
        socket.assigns.highlighted_chord,
        socket.assigns.tab,
@@ -469,15 +472,11 @@ defmodule FretboardWeb.FretboardLive do
 
   @impl true
   def handle_event("clear_all_chords", _params, socket) do
-    socket =
-      socket
-      |> assign(active_chords: [], highlighted_chord: nil)
-
     {:noreply,
      push_url_patch(
        socket,
        socket.assigns.instrument,
-       socket.assigns.tuning,
+       socket.assigns.tuning_state,
        [],
        nil
      )}
@@ -612,7 +611,7 @@ defmodule FretboardWeb.FretboardLive do
         name="chord[root]"
         class="form-select"
       >
-        <%= for note <- Note.chromatic_scale() do %>
+        <%= for note <- Music.chromatic_scale() do %>
           <option value={note} selected={@chord_form["root"] == note}>{note}</option>
         <% end %>
       </select>
@@ -1092,9 +1091,8 @@ defmodule FretboardWeb.FretboardLive do
   # ---------------------------------------------------------------------------
 
   attr :show_tuning_modal, :boolean, required: true
-  attr :modal_preset, :string, required: true
+  attr :modal_tuning_state, :map, required: true
   attr :instrument, :atom, required: true
-  attr :modal_tuning, :list, required: true
   attr :svg, :map, required: true
   attr :show_key_modal, :boolean, required: true
   attr :key_tonic, :string, required: true
@@ -1110,9 +1108,8 @@ defmodule FretboardWeb.FretboardLive do
     <%!-- Tuning Modal (visible in both tabs) --%>
     <.tuning_modal
       show={@show_tuning_modal}
-      modal_preset={@modal_preset}
+      modal_tuning_state={@modal_tuning_state}
       instrument={@instrument}
-      modal_tuning={@modal_tuning}
       string_count={@svg.string_count}
     />
 
@@ -1135,19 +1132,6 @@ defmodule FretboardWeb.FretboardLive do
     """
   end
 
-  @doc """
-  Detects which preset matches a given tuning for a given instrument, or returns "Custom".
-  """
-  @spec detect_preset([String.t()], atom()) :: String.t()
-  def detect_preset(tuning, instrument) do
-    case Enum.find(Music.instrument_tuning_presets(instrument), fn {_name, notes} ->
-           notes == tuning
-         end) do
-      {name, _notes} -> name
-      nil -> "Custom"
-    end
-  end
-
   # ---------------------------------------------------------------------------
   # Analyzer results component
   # ---------------------------------------------------------------------------
@@ -1164,15 +1148,7 @@ defmodule FretboardWeb.FretboardLive do
 
   attr :analysis, :any, required: true
 
-  defp analysis_state(%{analysis: {:empty}} = assigns) do
-    ~H"""
-    <div class="analyzer-empty">
-      Pulsa notas en el diapasón para identificar un acorde
-    </div>
-    """
-  end
-
-  defp analysis_state(%{analysis: nil} = assigns) do
+  defp analysis_state(%{analysis: a} = assigns) when a in [nil, {:empty}] do
     ~H"""
     <div class="analyzer-empty">
       Pulsa notas en el diapasón para identificar un acorde
@@ -1273,87 +1249,6 @@ defmodule FretboardWeb.FretboardLive do
   defp analysis_key({:chords, notes, _, _}), do: "chords-#{Enum.join(notes, "-")}"
   defp analysis_key(nil), do: "nil"
 
-  @doc """
-  Computes the analysis state from the marked notes and tuning.
-
-  Returns one of:
-    - `{:empty}` — no notes marked
-    - `{:single, note}` — one note marked
-    - `{:interval, note_a, note_b, label}` — two notes marked
-    - `{:chords, notes, bass, interpretations}` — three or more notes marked
-  """
-  @spec analyzer_state(map(), [String.t()]) ::
-          {:empty}
-          | {:single, String.t()}
-          | {:interval, String.t(), String.t(), String.t()}
-          | {:chords, [String.t()], String.t(), [map()]}
-  def analyzer_state(marked_notes, tuning) do
-    positions =
-      marked_notes
-      |> Enum.sort_by(fn {string, _fret} -> string end, :desc)
-      |> Enum.map(fn {string, fret} ->
-        open_note = Enum.at(tuning, string)
-        note = Music.note_at(open_note, fret)
-        {string, fret, note}
-      end)
-
-    # Deduplicate by pitch class — multiple marked positions that
-    # produce the same note name count as one unique pitch class.
-    unique_notes =
-      positions
-      |> Enum.map(&elem(&1, 2))
-      |> Enum.uniq_by(&Music.note_index/1)
-
-    case unique_notes do
-      [] ->
-        {:empty}
-
-      [note] ->
-        {:single, note}
-
-      [note_a, note_b] ->
-        label = interval_label(note_a, note_b)
-        {:interval, note_a, note_b, label}
-
-      _ ->
-        # Three or more unique pitch classes — sort positions by pitch
-        # (lowest first) so the first is the bass.
-        sorted = Enum.sort_by(positions, fn {string, fret, _note} -> {string, fret} end, :desc)
-        notes = Enum.map(sorted, &elem(&1, 2))
-        bass = hd(notes)
-        interpretations = Music.analyze_notes(notes, bass)
-        {:chords, notes, bass, interpretations}
-    end
-  end
-
-  @doc """
-  Returns the interval name between two notes (e.g. "Major 3rd").
-  """
-  @spec interval_label(String.t(), String.t()) :: String.t()
-  def interval_label(note_a, note_b) do
-    idx_a = Music.note_index(note_a)
-    idx_b = Music.note_index(note_b)
-    semitones = rem(idx_b - idx_a + 12, 12)
-    interval_name(semitones)
-  end
-
-  @interval_names %{
-    0 => "Perfect Unison",
-    1 => "Minor 2nd",
-    2 => "Major 2nd",
-    3 => "Minor 3rd",
-    4 => "Major 3rd",
-    5 => "Perfect 4th",
-    6 => "Tritone",
-    7 => "Perfect 5th",
-    8 => "Augmented 5th",
-    9 => "Major 6th",
-    10 => "Minor 7th",
-    11 => "Major 7th"
-  }
-
-  defp interval_name(semitones), do: Map.fetch!(@interval_names, semitones)
-
   defp inversion_label(0), do: "Root position"
   defp inversion_label(1), do: "1st inversion"
   defp inversion_label(2), do: "2nd inversion"
@@ -1406,7 +1301,7 @@ defmodule FretboardWeb.FretboardLive do
 
     params =
       instrument
-      |> Music.encode_params(tuning, active_chords, highlighted_chord)
+      |> Music.encode_pitch_params(tuning, active_chords, highlighted_chord)
       |> maybe_put_tab(tab)
       |> maybe_put_marked(marked)
 

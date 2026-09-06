@@ -129,10 +129,10 @@ defmodule Fretboard.Music.InstrumentTest do
       assert Instrument.instrument(:ukelele).standard_tuning == ["G", "C", "E", "A"]
     end
 
-    test "has 4 tuning presets" do
+    test "has 5 tuning presets" do
       ukelele = Instrument.instrument(:ukelele)
       assert is_list(ukelele.presets)
-      assert length(ukelele.presets) == 4
+      assert length(ukelele.presets) == 5
     end
 
     test "has 24 frets" do
@@ -198,9 +198,9 @@ defmodule Fretboard.Music.InstrumentTest do
       assert length(presets) == 3
     end
 
-    test "returns 4 ukelele presets" do
+    test "returns 5 ukelele presets" do
       presets = Instrument.instrument_tuning_presets(:ukelele)
-      assert length(presets) == 4
+      assert length(presets) == 5
     end
   end
 
@@ -224,6 +224,7 @@ defmodule Fretboard.Music.InstrumentTest do
     test "returns names for ukelele" do
       assert Instrument.instrument_preset_names(:ukelele) == [
                "Standard",
+               "Low G",
                "D tuning",
                "Baritone",
                "Half Step Down"

@@ -6,7 +6,7 @@ defmodule Fretboard.Music.Chord do
   the notes that belong to a chord given a root and quality.
   """
 
-  alias Fretboard.Music.Note
+  alias Fretboard.Music.{Intervals, Note}
 
   @formulas %{
     # Triads
@@ -68,20 +68,10 @@ defmodule Fretboard.Music.Chord do
     dim7b13: [0, 3, 6, 8, 9]
   }
 
-  @interval_names %{
-    0 => "Root",
-    1 => "Minor 2nd",
-    2 => "Major 2nd",
-    3 => "Minor 3rd",
-    4 => "Major 3rd",
-    5 => "Perfect 4th",
-    6 => "Tritone",
-    7 => "Perfect 5th",
-    8 => "Augmented 5th",
-    9 => "Major 6th",
-    10 => "Minor 7th",
-    11 => "Major 7th"
-  }
+  # Semitone 0 is a chord's Root, not a generic "Perfect Unison"; every
+  # other interval keeps the simple name shared with the rest of the
+  # music domain.
+  @root_label "Root"
 
   # Compound interval names used for extensions (9ths, 11ths, 13ths).
   # These replace the simple chromatic names when the interval functions
@@ -263,44 +253,46 @@ defmodule Fretboard.Music.Chord do
     interval_label_for(interval, formula)
   end
 
-  # Intervals that always keep their simple chromatic name.
-  defp interval_label_for(interval, _formula) when interval in [0, 4, 7, 10, 11] do
-    Map.fetch!(@interval_names, interval)
-  end
+  # Intervals that always keep their simple chromatic name. Semitone 0
+  # is the chord's Root.
+  defp interval_label_for(0, _formula), do: @root_label
+
+  defp interval_label_for(interval, _formula) when interval in [4, 7, 10, 11],
+    do: Intervals.name(interval)
 
   # Extension intervals get compound names when a 7th is present.
   defp interval_label_for(2, formula),
-    do: if(has_seventh?(formula), do: @major_ninth, else: Map.fetch!(@interval_names, 2))
+    do: if(has_seventh?(formula), do: @major_ninth, else: Intervals.name(2))
 
   defp interval_label_for(5, formula),
-    do: if(has_seventh?(formula), do: @perfect_eleventh, else: Map.fetch!(@interval_names, 5))
+    do: if(has_seventh?(formula), do: @perfect_eleventh, else: Intervals.name(5))
 
   defp interval_label_for(9, formula),
-    do: if(has_seventh?(formula), do: @major_thirteenth, else: Map.fetch!(@interval_names, 9))
+    do: if(has_seventh?(formula), do: @major_thirteenth, else: Intervals.name(9))
 
   defp interval_label_for(1, formula),
-    do: if(has_seventh?(formula), do: @flat_ninth, else: Map.fetch!(@interval_names, 1))
+    do: if(has_seventh?(formula), do: @flat_ninth, else: Intervals.name(1))
 
   # Sharp 9th only when a 7th is present AND the major 3rd (4) is in the
   # formula — otherwise it's a minor 3rd.
   defp interval_label_for(3, formula) do
     if has_seventh?(formula) and 4 in formula,
       do: @sharp_ninth,
-      else: Map.fetch!(@interval_names, 3)
+      else: Intervals.name(3)
   end
 
   defp interval_label_for(6, formula),
-    do: if(7 in formula, do: @augmented_eleventh, else: Map.fetch!(@interval_names, 6))
+    do: if(7 in formula, do: @augmented_eleventh, else: Intervals.name(6))
 
   defp interval_label_for(8, formula) do
     if 6 in formula or 7 in formula,
       do: @minor_thirteenth,
-      else: Map.fetch!(@interval_names, 8)
+      else: Intervals.name(8)
   end
 
   # Fallback for any interval not covered above.
   defp interval_label_for(interval, _formula),
-    do: Map.fetch!(@interval_names, interval)
+    do: Intervals.name(interval)
 
   @spec has_seventh?([non_neg_integer()]) :: boolean()
   defp has_seventh?(formula), do: 10 in formula or 11 in formula
