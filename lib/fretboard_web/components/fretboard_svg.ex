@@ -378,10 +378,17 @@ defmodule FretboardWeb.FretboardSVG do
     fill_for_highlighted(chords, colors, highlighted_chord, highlighted_label)
   end
 
-  def note_fill(chords, _active_chords, _colors, nil) when length(chords) > 1,
-    do: @overlap_color
+  def note_fill(chords, active_chords, colors, nil) do
+    unique_chords = Enum.uniq(chords)
 
-  def note_fill([chord_label], active_chords, colors, nil) do
+    if length(unique_chords) == 1 do
+      fill_for_chord(hd(unique_chords), active_chords, colors)
+    else
+      @overlap_color
+    end
+  end
+
+  defp fill_for_chord(chord_label, active_chords, colors) do
     index =
       Enum.find_index(active_chords, fn c ->
         Music.chord_label(c.root, c.quality) == chord_label
@@ -389,8 +396,6 @@ defmodule FretboardWeb.FretboardSVG do
 
     fill_for_index(index, colors)
   end
-
-  def note_fill(_, _, _, nil), do: @overlap_color
 
   defp fill_for_highlighted(chords, colors, highlighted_chord, highlighted_label) do
     if highlighted_label in chords do
