@@ -101,6 +101,7 @@ defmodule FretboardWeb.FretboardLive do
       tuning: tuning,
       tuning_state: tuning_state,
       active_chords: active_chords,
+      active_chord_colors: active_chord_colors(active_chords),
       highlighted_chord: highlighted_chord,
       fretboard: fretboard,
       svg: svg_params(string_count),
@@ -192,21 +193,7 @@ defmodule FretboardWeb.FretboardLive do
   def handle_event("remove_chord", %{"index" => index_str}, socket) do
     index = String.to_integer(index_str)
     active_chords = List.delete_at(socket.assigns.active_chords, index)
-
-    highlighted_chord =
-      cond do
-        socket.assigns.highlighted_chord == nil ->
-          nil
-
-        socket.assigns.highlighted_chord == index ->
-          nil
-
-        socket.assigns.highlighted_chord > index ->
-          socket.assigns.highlighted_chord - 1
-
-        true ->
-          socket.assigns.highlighted_chord
-      end
+    highlighted_chord = remaining_highlight(socket.assigns, active_chords)
 
     {:noreply,
      push_url_patch(
@@ -368,11 +355,7 @@ defmodule FretboardWeb.FretboardLive do
   @impl true
   def handle_event("highlight_chord", %{"index" => index_str}, socket) do
     index = String.to_integer(index_str)
-
-    highlighted_chord =
-      if socket.assigns.highlighted_chord == index,
-        do: nil,
-        else: index
+    highlighted_chord = toggled_highlight(socket.assigns, index)
 
     {:noreply,
      push_url_patch(
@@ -661,6 +644,7 @@ defmodule FretboardWeb.FretboardLive do
   attr :tuning, :list, required: true
   attr :fretboard, :list, required: true
   attr :active_chords, :list, required: true
+  attr :active_chord_colors, :list, required: true
   attr :chord_colors, :list, required: true
   attr :highlighted_chord, :any, default: nil
   attr :key_suggestions, :any, required: true
@@ -675,7 +659,7 @@ defmodule FretboardWeb.FretboardLive do
       tuning={@tuning}
       fretboard={@fretboard}
       active_chords={@active_chords}
-      chord_colors={@chord_colors}
+      chord_colors={@active_chord_colors}
       highlighted_chord={@highlighted_chord}
     />
 
@@ -688,7 +672,7 @@ defmodule FretboardWeb.FretboardLive do
 
     <.chord_chips
       active_chords={@active_chords}
-      chord_colors={@chord_colors}
+      chord_colors={@active_chord_colors}
       highlighted_chord={@highlighted_chord}
     />
 
@@ -720,7 +704,7 @@ defmodule FretboardWeb.FretboardLive do
     <div class="chords-wrapper">
       <%= for {chord, i} <- Enum.with_index(@active_chords) do %>
         <div
-          class={"chord-chip#{if @highlighted_chord == i, do: " chord-chip--highlighted", else: ""}"}
+          class={"chord-chip#{if highlighted_chord?(chord, @active_chords, @highlighted_chord), do: " chord-chip--highlighted", else: ""}"}
           style={"background-color: #{chord_color(i, @chord_colors)}"}
           phx-click="highlight_chord"
           phx-value-index={i}
@@ -1261,6 +1245,44 @@ defmodule FretboardWeb.FretboardLive do
   defp analysis_key({:interval, a, b, _}), do: "interval-#{a}-#{b}"
   defp analysis_key({:chords, notes, _, _}), do: "chords-#{Enum.join(notes, "-")}"
   defp analysis_key(nil), do: "nil"
+
+  defp active_chord_colors(chords) do
+    {colors, _by_chord} =
+      Enum.map_reduce(chords, %{}, fn chord, by_chord ->
+        case Map.fetch(by_chord, chord) do
+          {:ok, color} ->
+            {color, by_chord}
+
+          :error ->
+            color = chord_color(map_size(by_chord), @chord_colors)
+            {color, Map.put(by_chord, chord, color)}
+        end
+      end)
+
+    colors
+  end
+
+  defp highlighted_chord?(_chord, _active_chords, nil), do: false
+
+  defp highlighted_chord?(chord, active_chords, highlighted_index) do
+    chord == Enum.at(active_chords, highlighted_index)
+  end
+
+  defp toggled_highlight(%{highlighted_chord: nil}, index), do: index
+
+  defp toggled_highlight(assigns, index) do
+    clicked_chord = Enum.at(assigns.active_chords, index)
+    highlighted_chord = Enum.at(assigns.active_chords, assigns.highlighted_chord)
+
+    if clicked_chord == highlighted_chord, do: nil, else: index
+  end
+
+  defp remaining_highlight(%{highlighted_chord: nil}, _active_chords), do: nil
+
+  defp remaining_highlight(assigns, active_chords) do
+    highlighted_chord = Enum.at(assigns.active_chords, assigns.highlighted_chord)
+    Enum.find_index(active_chords, &(&1 == highlighted_chord))
+  end
 
   defp inversion_label(0), do: "Root position"
   defp inversion_label(1), do: "1st inversion"
