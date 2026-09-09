@@ -54,7 +54,7 @@ defmodule FretboardWeb.AnalyzerLiveTest do
     test "shows the empty state message when no notes are marked", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/?tab=analyzer")
 
-      assert html =~ "Pulsa notas en el diapasón para identificar un acorde"
+      assert html =~ "Click notes on the fretboard to identify a chord"
     end
 
     test "does not show the clear button when no notes are marked", %{conn: conn} do
@@ -82,7 +82,7 @@ defmodule FretboardWeb.AnalyzerLiveTest do
 
       # No marked circles should remain
       refute html =~ "analyzer-note-circle"
-      assert html =~ "Pulsa notas en el diapasón para identificar un acorde"
+      assert html =~ "Click notes on the fretboard to identify a chord"
     end
 
     test "clicking a note on the same string replaces the previous note", %{conn: conn} do
@@ -113,7 +113,7 @@ defmodule FretboardWeb.AnalyzerLiveTest do
       html = render_click(view, "clear_notes", %{})
 
       refute html =~ "analyzer-note-circle"
-      assert html =~ "Pulsa notas en el diapasón para identificar un acorde"
+      assert html =~ "Click notes on the fretboard to identify a chord"
     end
 
     test "clear button is shown only when there are marked notes", %{conn: conn} do
@@ -133,7 +133,7 @@ defmodule FretboardWeb.AnalyzerLiveTest do
       {:ok, _view, html} = live(conn, "/?tab=analyzer&marked=0-3")
 
       # String 0 is high E (standard tuning), fret 3 → G
-      assert html =~ "Nota:"
+      assert html =~ "Note:"
       assert html =~ "G"
       refute html =~ "analysis-card"
     end
@@ -142,7 +142,7 @@ defmodule FretboardWeb.AnalyzerLiveTest do
       {:ok, _view, html} = live(conn, "/?tab=analyzer&marked=0-3,2-2")
 
       # String 0 fret 3 → G; string 2 fret 2 → E
-      assert html =~ "Intervalo:"
+      assert html =~ "Interval:"
       refute html =~ "analysis-card"
     end
 
@@ -285,7 +285,7 @@ defmodule FretboardWeb.AnalyzerLiveTest do
       assert html =~ "analyzer-note-circle",
              "expected marked note circle to render when switching back to analyzer"
 
-      refute html =~ "Pulsa notas en el diapasón para identificar un acorde",
+      refute html =~ "Click notes on the fretboard to identify a chord",
              "expected the empty state to be replaced by marked-note analysis"
     end
 
@@ -318,7 +318,7 @@ defmodule FretboardWeb.AnalyzerLiveTest do
       assert html =~ "analyzer-interval",
              "expected the interval display to render after restoring marked notes"
 
-      refute html =~ "Pulsa notas en el diapasón para identificar un acorde",
+      refute html =~ "Click notes on the fretboard to identify a chord",
              "expected no empty state when marked notes are restored"
     end
   end

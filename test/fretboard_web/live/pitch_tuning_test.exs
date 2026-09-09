@@ -92,9 +92,9 @@ defmodule FretboardWeb.PitchTuningTest do
     open_tuning(reloaded)
     change_string(reloaded, 0, "A#")
     final_path = apply_tuning(reloaded)
-    assert has_element?(reloaded, ".analyzer-interval", "Intervalo: A#-C (Major 2nd)")
+    assert has_element?(reloaded, ".analyzer-interval", "Interval: A#-C (Major 2nd)")
     {:ok, final, _} = live(conn, final_path)
-    assert has_element?(final, ".analyzer-interval", "Intervalo: A#-C (Major 2nd)")
+    assert has_element?(final, ".analyzer-interval", "Interval: A#-C (Major 2nd)")
   end
 
   describe "legacy note-only links" do
@@ -116,21 +116,21 @@ defmodule FretboardWeb.PitchTuningTest do
           })
 
       {:ok, view, _} = live(conn, path)
-      assert has_element?(view, ".analyzer-interval", "Intervalo: A-G# (Major 7th)")
+      assert has_element?(view, ".analyzer-interval", "Interval: A-G# (Major 7th)")
     end
   end
 
   describe "three selected pitches with octave doubling" do
     test "C3 G3 C4 retains the Perfect 5th interval", %{conn: conn} do
       {:ok, view, _} = live(conn, "/?tab=analyzer&marked=1-3,3-0,4-1")
-      assert has_element?(view, ".analyzer-interval", "Intervalo: C-G (Perfect 5th)")
-      refute render(view) =~ "No se encontró"
+      assert has_element?(view, ".analyzer-interval", "Interval: C-G (Perfect 5th)")
+      refute render(view) =~ "No chord found"
     end
 
     test "C3 C4 C5 reports Octave rather than no chord found", %{conn: conn} do
       {:ok, view, _} = live(conn, "/?tab=analyzer&marked=1-3,4-1,5-8")
-      assert has_element?(view, ".analyzer-interval", "Intervalo: C-C (Octave)")
-      refute render(view) =~ "No se encontró"
+      assert has_element?(view, ".analyzer-interval", "Interval: C-C (Octave)")
+      refute render(view) =~ "No chord found"
       refute has_element?(view, ".analyzer-single-note")
     end
   end
@@ -169,7 +169,7 @@ defmodule FretboardWeb.PitchTuningTest do
   end
 
   defp assert_drop_d_interval(view) do
-    assert has_element?(view, ".analyzer-interval", "Intervalo: G#-A (Minor 2nd)"),
+    assert has_element?(view, ".analyzer-interval", "Interval: G#-A (Minor 2nd)"),
            "expected G#44 below A45 using fixed Drop D reference; rendered interval: #{view |> element(".analyzer-interval") |> render()}"
 
     refute has_element?(view, ".analyzer-interval", "Major 7th")

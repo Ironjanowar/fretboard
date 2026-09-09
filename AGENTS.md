@@ -102,6 +102,13 @@ Agent instructions:
 
 Pitfall: after adding or updating deps, restart `mix phx.server` — the code reloader cannot load modules from dependencies compiled after the server booted (`UndefinedFunctionError Tidewave.Plug is undefined`).
 
+## Language Convention
+
+- Keep the entire application and project documentation in English, including README, CHANGELOG, code comments, and API documentation.
+- Use English for all user-facing copy: controls, instructions, loading and empty states, errors, accessibility labels, tooltips, and titles.
+- Preserve stable internal identifiers and URL values when translating display labels (for example, display `Ukulele` while retaining `:ukelele` and `instrument=ukelele`).
+- Preserve proper nouns and original song titles, such as `Malagueña`.
+
 ## Elixir Coding Conventions
 
 ### Naming

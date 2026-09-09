@@ -24,7 +24,7 @@ defmodule Fretboard.Music.InstrumentTest do
     end
 
     test "includes ukelele tuple" do
-      assert {:ukelele, "Ukelele"} in Instrument.instruments()
+      assert {:ukelele, "Ukulele"} in Instrument.instruments()
     end
   end
 
@@ -117,8 +117,8 @@ defmodule Fretboard.Music.InstrumentTest do
       assert is_map(Instrument.instrument(:ukelele))
     end
 
-    test "has name 'Ukelele'" do
-      assert Instrument.instrument(:ukelele).name == "Ukelele"
+    test "has name 'Ukulele'" do
+      assert Instrument.instrument(:ukelele).name == "Ukulele"
     end
 
     test "has 4 strings" do

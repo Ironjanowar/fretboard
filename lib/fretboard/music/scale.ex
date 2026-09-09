@@ -611,7 +611,7 @@ defmodule Fretboard.Music.Scale do
   end
 
   defp unmatched_chords(selected, chords) do
-    # Indices are preserved directly in selected — no re-búsqueda needed.
+    # Indices are preserved directly in selected — no repeat lookup needed.
     covered_indices =
       selected
       |> Enum.flat_map(fn {_cand, indices} -> indices end)
