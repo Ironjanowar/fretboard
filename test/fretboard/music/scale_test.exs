@@ -490,7 +490,7 @@ defmodule Fretboard.Music.ScaleTest do
       assert results == []
     end
 
-    test "C-F-G-D-A major → 2 groups (C major covers C,F,G; second group covers D,A)" do
+    test "C-F-G-D-A major → 2 groups with full membership (second group lists G, D, A)" do
       results =
         Scale.suggest_multi_keys([
           chord("C", :major),
@@ -523,6 +523,10 @@ defmodule Fretboard.Music.ScaleTest do
       second_roots = Enum.map(second_group.chords, & &1.root)
       assert "D" in second_roots
       assert "A" in second_roots
+      # Full membership: G major is diatonic to the second group's key too
+      # (G major or D major both contain G-B-D), so it must also be listed
+      # there even though the greedy cover assigned it to C major.
+      assert "G" in second_roots
 
       # Total groups with real keys must be <= 3.
       assert length(real_groups) <= 3
@@ -632,7 +636,7 @@ defmodule Fretboard.Music.ScaleTest do
       assert length(real_groups) <= 3
     end
 
-    test "overlap: G major may appear in multiple groups when applicable" do
+    test "overlap: G major appears in every group whose key contains its notes" do
       results =
         Scale.suggest_multi_keys([
           chord("C", :major),
@@ -642,19 +646,18 @@ defmodule Fretboard.Music.ScaleTest do
           chord("A", :major)
         ])
 
-      # G major is diatonic to both C major and G major keys, so it may
-      # appear in more than one group's chord list.
+      # G major is diatonic to both C major and the second group's key
+      # (G major or D major — both contain G-B-D), so under full membership
+      # it must appear in BOTH groups' chord lists, not only the first.
       real_groups = Enum.filter(results, &(&1.key != nil))
+      assert length(real_groups) == 2
 
       g_chord = chord("G", :major)
 
-      groups_containing_g =
-        Enum.count(real_groups, fn g ->
-          Enum.any?(g.chords, &(&1 == g_chord))
-        end)
-
-      # G should appear in at least one group; overlap allows it in more.
-      assert groups_containing_g >= 1
+      for g <- real_groups do
+        assert g_chord in g.chords,
+               "expected G major in #{g.key.tonic} #{g.key.scale_type} group, got: #{inspect(g.chords)}"
+      end
     end
 
     test "groups are ordered by coverage (chord count) descending" do
