@@ -61,4 +61,4 @@ See [CHANGELOG.md](CHANGELOG.md) for notable changes.
 
 ## 📄 License
 
-MIT
+[MIT](LICENSE)
