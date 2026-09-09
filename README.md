@@ -1,27 +1,37 @@
 # 🎸 Fretboard Visualizer
 
-An interactive guitar fretboard visualization tool built with Elixir and Phoenix LiveView. See chord notes light up across the neck in real time — no page reloads, no JavaScript frameworks.
+An interactive fretboard visualization tool built with Elixir and Phoenix LiveView. See chord notes light up across the neck in real time — no page reloads, no JavaScript frameworks.
 
 Built for guitarists who want to **understand** the fretboard, not just memorize shapes.
 
-## ✨ What It Does
+## ✨ What You Can Do
 
-- **Visualize chord notes** across all 24 frets — see where every C, E, and G lives when you select C major
-- **Stack multiple chords** with distinct colors — compare C major and A minor side by side, spot shared notes instantly
-- **11 chord types** — major, minor, dim, aug, sus2, sus4, 7, maj7, min7, dim7, m7b5
-- **Custom tunings** — 9 presets (Standard, Drop D, DADGAD, Open G, and more) plus per-string fine tuning
-- **Shareable URLs** — every chord/tuning combination generates a unique URL you can share or bookmark
-- **Overlap detection** — notes shared between chords are highlighted with tooltips showing which chords contain them
+- **Compare chords** — stack multiple chords with distinct colors and see where every note lives across 24 frets; notes shared between chords turn grey
+- **Highlight a specific chord** — click a chord chip to make its notes stand out from the shared ones
+- **Identify chords from the fretboard** — click notes in the Analyzer tab and get matching chords with intervals, inversions, and bass note (slash chords); incomplete voicings are matched too
+- **Find compatible keys** — with several chords selected, the app suggests keys that fit them, with a preview of their diatonic chords
+- **Explore chord progressions** — load a progression (pop, jazz, blues, flamenco, modal…) in any tonic
+- **Switch instruments and tunings** — guitar, 4- and 5-string bass, and ukulele, each with named tuning presets (Standard, Drop D, DADGAD, Open G, Low G…) or per-string custom tunings
+- **44 chord types** — from triads to 13ths, including suspended and altered chords
+- **Share what you see** — every state (chords, marked notes, instrument, tuning) lives in the URL: bookmark it or send it to a friend
 
 ## 📸 Screenshots
 
-**Multi-chord visualization** — E minor and A major side by side, overlapping notes in grey:
+**Compare multiple chords** — shared notes in grey:
 
-![Multi-chord visualization](screenshots/multi-chord.jpg)
+![Compare multiple chords](screenshots/compare-chords.jpg)
 
-**Key mode** — All diatonic chords of E minor loaded at once with distinct colors:
+**Highlight a specific chord** — its notes stand out from the shared ones:
 
-![Key diatonic chords](screenshots/key-diatonic.jpg)
+![Highlight a specific chord](screenshots/highlight-chord.jpg)
+
+**Identify chords from selected notes** — the Analyzer shows matching chords with intervals, inversions, and bass:
+
+![Identify chords from selected notes](screenshots/identify-chords.jpg)
+
+**Find compatible keys** — suggestions with diatonic chord previews:
+
+![Find compatible keys](screenshots/compatible-keys.jpg)
 
 ## 🎯 Who Is This For?
 
@@ -30,24 +40,9 @@ Built for guitarists who want to **understand** the fretboard, not just memorize
 - **Theory nerds** who want to see interval patterns across tunings
 - **Teachers** who need a quick visual aid for explaining chord construction
 
-## 🏗️ Tech Stack
+## 🚀 Running It Locally
 
-| Layer | Tech |
-|-------|------|
-| Language | Elixir 1.19 |
-| Web | Phoenix 1.8 + LiveView 1.1 |
-| Rendering | Native SVG in HEEx templates |
-| Database | None — all state lives in the LiveView process |
-| JS | Zero custom JavaScript |
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Elixir ~> 1.15
-- Erlang/OTP 27+
-
-### Setup
+Requires Elixir ~> 1.15 and Erlang/OTP 27+.
 
 ```bash
 git clone https://github.com/Ironjanowar/fretboard.git
@@ -58,45 +53,12 @@ mix phx.server
 
 Then open [localhost:4000](http://localhost:4000).
 
-### Run Tests
+## 🏛️ Architecture (for developers)
 
-```bash
-mix test
-```
+The domain logic (notes, chords, scales, tunings) lives in `Fretboard.Music` and is fully tested without any web concerns; the LiveView layer talks only to that facade and renders native SVG. All state is URL-encoded — no database, no accounts.
 
-## 🏛️ Architecture
-
-The project follows a clean domain separation:
-
-```
-lib/
-├── fretboard/
-│   └── music/          # Domain logic (notes, chords, tunings, scales)
-│       ├── note.ex     # 12 chromatic notes, transposition
-│       ├── chord.ex    # Chord formulas and note calculation
-│       ├── tuning.ex   # Tuning presets and custom tunings
-│       ├── scale.ex    # Scale formulas
-│       └── url_codec.ex # URL serialization for shareable links
-└── fretboard_web/
-    └── live/           # LiveView UI, SVG rendering
-```
-
-**Key design rule:** The web layer talks only to `Fretboard.Music` (the facade module). Internal music modules are never called directly from LiveView.
-
-URL decoding rejects incorrectly typed fields independently, preserving valid siblings;
-exact `pitches` take precedence over legacy tuning names. `handle_params` owns URL state
-and refreshes expensive derived values only when their inputs change; regression tests
-pin call counts so recomputation stays lean.
+See [CHANGELOG.md](CHANGELOG.md) for notable changes.
 
 ## 📄 License
 
 MIT
-
-## 🤝 Contributing
-
-PRs welcome! The project uses Credo in strict mode and has a pre-commit hook that runs the full test suite + linter.
-
-```bash
-mix credo --strict
-mix test
-```
