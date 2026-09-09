@@ -60,8 +60,8 @@ defmodule FretboardWeb.AbsolutePitchAnalysisTest do
 
       # Grave→agudo: the lower note (C3) is shown first, not the note on
       # the higher string, and 4 semitones is a Major 3rd.
-      assert has_element?(view, ".analyzer-interval", ~r/Intervalo: C-E \(Major 3rd\)/)
-      refute has_element?(view, ".analyzer-interval", ~r/Intervalo: E-C/)
+      assert has_element?(view, ".analyzer-interval", ~r/Interval: C-E \(Major 3rd\)/)
+      refute has_element?(view, ".analyzer-interval", ~r/Interval: E-C/)
       refute has_element?(view, ".analyzer-interval", ~r/Augmented 5th/)
     end
 
@@ -71,8 +71,8 @@ defmodule FretboardWeb.AbsolutePitchAnalysisTest do
 
       # C3→E4 spans 16 semitones (an octave plus a Major 3rd); the
       # simple interval name is still Major 3rd, ordered low to high.
-      assert has_element?(view, ".analyzer-interval", ~r/Intervalo: C-E \(Major 3rd\)/)
-      refute has_element?(view, ".analyzer-interval", ~r/Intervalo: E-C/)
+      assert has_element?(view, ".analyzer-interval", ~r/Interval: C-E \(Major 3rd\)/)
+      refute has_element?(view, ".analyzer-interval", ~r/Interval: E-C/)
       refute has_element?(view, ".analyzer-interval", ~r/Augmented 5th/)
     end
   end
@@ -99,9 +99,9 @@ defmodule FretboardWeb.AbsolutePitchAnalysisTest do
 
       # String 1 fret 3 is C3 and string 4 fret 1 is C4: same pitch
       # class, one octave apart. Both notes must be reported as an
-      # interval, not deduplicated into a single "Nota: C".
-      assert has_element?(view, ".analyzer-interval", ~r/Intervalo: C-C \(Octave\)/)
-      refute has_element?(view, ".analyzer-single-note", ~r/Nota:/)
+      # interval, not deduplicated into a single "Note: C".
+      assert has_element?(view, ".analyzer-interval", ~r/Interval: C-C \(Octave\)/)
+      refute has_element?(view, ".analyzer-single-note", ~r/Note:/)
     end
   end
 

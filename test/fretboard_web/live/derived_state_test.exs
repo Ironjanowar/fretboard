@@ -98,7 +98,7 @@ defmodule FretboardWeb.DerivedStateTest do
     conn: conn
   } do
     {:ok, view, _} = live(conn, "/?chords=Cmaj,Amin")
-    assert render_async(view) =~ "Ver tonalidad"
+    assert render_async(view) =~ "View key"
     assert calls(:suggest_keys, 1) == 1
 
     render_click(view, "highlight_chord", %{"index" => "0"})
@@ -106,11 +106,11 @@ defmodule FretboardWeb.DerivedStateTest do
     render_click(view, "toggle_note", %{"string" => "0", "fret" => "0"})
     assert render_async(view) =~ "analyzer-results"
     render_click(view, "toggle_tab", %{"tab" => "visualizer"})
-    assert render_async(view) =~ "Ver tonalidad"
+    assert render_async(view) =~ "View key"
     assert calls(:suggest_keys, 1) == 1
 
     render_click(view, "add_chord", %{"chord" => %{"root" => "G", "quality" => "major"}})
-    assert render_async(view) =~ "Ver tonalidad"
+    assert render_async(view) =~ "View key"
     assert calls(:suggest_keys, 1) == 2
     render_click(view, "clear_all_chords")
     refute render_async(view) =~ "key-suggestions-wrapper"
@@ -127,7 +127,7 @@ defmodule FretboardWeb.DerivedStateTest do
     # Do not await the initial task before navigating: its result must still
     # arrive whether it completes before or after these unrelated patches.
     render_click(view, "toggle_tab", %{"tab" => "visualizer"})
-    assert render_async(view) =~ "Ver tonalidad"
+    assert render_async(view) =~ "View key"
     assert calls(:suggest_keys, 1) == 1
     render_click(view, "toggle_tab", %{"tab" => "analyzer"})
     assert render(view) =~ "Perfect 5th"

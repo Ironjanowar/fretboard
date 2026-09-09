@@ -749,8 +749,8 @@ defmodule FretboardWeb.FretboardLive do
           class="key-suggestions-wrapper"
           id="key-suggestions"
         >
-          <label class="section-label" style="width:100%">Tonalidades compatibles</label>
-          <p class="key-suggestions-loading">Calculando...</p>
+          <label class="section-label" style="width:100%">Compatible keys</label>
+          <p class="key-suggestions-loading">Calculating...</p>
         </div>
       </:loading>
       <:failed :let={_failure}>
@@ -759,8 +759,8 @@ defmodule FretboardWeb.FretboardLive do
           class="key-suggestions-wrapper"
           id="key-suggestions"
         >
-          <label class="section-label" style="width:100%">Tonalidades compatibles</label>
-          <p class="text-muted">Error al calcular tonalidades.</p>
+          <label class="section-label" style="width:100%">Compatible keys</label>
+          <p class="text-muted">Error calculating keys.</p>
         </div>
       </:failed>
       <div
@@ -768,11 +768,11 @@ defmodule FretboardWeb.FretboardLive do
         class="key-suggestions-wrapper"
         id="key-suggestions"
       >
-        <label class="section-label" style="width:100%">Tonalidades compatibles</label>
+        <label class="section-label" style="width:100%">Compatible keys</label>
 
         <%= if key_suggestions == [] do %>
           <p class="text-muted">
-            No se encontraron tonalidades compatibles con estos acordes.
+            No compatible keys found for these chords.
           </p>
         <% else %>
           <%= for group <- group_key_suggestions(key_suggestions) do %>
@@ -826,7 +826,7 @@ defmodule FretboardWeb.FretboardLive do
         class="key-modes-toggle"
         phx-click="toggle_key_modes"
       >
-        ▸ {length(@group.others)} modos adicionales
+        ▸ {length(@group.others)} additional modes
       </button>
     </div>
     <.expanded_modes
@@ -880,7 +880,7 @@ defmodule FretboardWeb.FretboardLive do
           </span>
         <% end %>
       </div>
-      <div class="key-card-arrow">Ver tonalidad →</div>
+      <div class="key-card-arrow">View key →</div>
     </div>
     """
   end
@@ -912,7 +912,7 @@ defmodule FretboardWeb.FretboardLive do
           </span>
         <% end %>
       </div>
-      <div class="key-card-arrow">Ver tonalidad →</div>
+      <div class="key-card-arrow">View key →</div>
     </div>
     """
   end
@@ -931,12 +931,12 @@ defmodule FretboardWeb.FretboardLive do
     <.async_result :let={multi_key_suggestions} assign={@multi_key_suggestions}>
       <:loading>
         <div :if={length(@active_chords) >= 3} class="key-suggestions-wrapper">
-          <p class="key-suggestions-loading">Analizando tonalidades...</p>
+          <p class="key-suggestions-loading">Analyzing keys...</p>
         </div>
       </:loading>
       <:failed>
         <div :if={length(@active_chords) >= 3} class="key-suggestions-wrapper">
-          <p class="text-muted">Error al calcular tonalidades.</p>
+          <p class="text-muted">Error calculating keys.</p>
         </div>
       </:failed>
       <div
@@ -945,9 +945,7 @@ defmodule FretboardWeb.FretboardLive do
         id="multi-key-suggestions"
       >
         <label class="section-label" style="width:100%">
-          No hay una tonalidad común. Se encontraron {length(
-            Enum.filter(multi_key_suggestions, &(&1.key != nil))
-          )} tonalidades:
+          No common key. {length(Enum.filter(multi_key_suggestions, &(&1.key != nil)))} keys found:
         </label>
 
         <%= for {group, i} <- Enum.with_index(multi_key_suggestions) do %>
@@ -989,7 +987,7 @@ defmodule FretboardWeb.FretboardLive do
     ~H"""
     <%!-- Unmatched chords --%>
     <div class="multi-key-unmatched">
-      <span class="multi-key-unmatched-label">Acordes sin tonalidad compatible:</span>
+      <span class="multi-key-unmatched-label">Chords without a compatible key:</span>
       <%= for chord <- @group.chords do %>
         <span class="chord-chip chord-chip--unmatched">
           {Music.chord_label(chord.root, chord.quality)}
@@ -1008,13 +1006,13 @@ defmodule FretboardWeb.FretboardLive do
     ~H"""
     <%!-- Tonal group --%>
     <div class="multi-key-group">
-      <span class="multi-key-group-label">Tonalidad {@index + 1}</span>
+      <span class="multi-key-group-label">Key {@index + 1}</span>
       <.key_card
         suggestion={@group.key}
         chord_colors={@chord_colors}
       />
       <div class="multi-key-your-chords">
-        <span class="multi-key-your-chords-label">Tus acordes:</span>
+        <span class="multi-key-your-chords-label">Your chords:</span>
         <%= for chord <- @group.chords do %>
           <.your_chord_chip
             chord={chord}
@@ -1148,7 +1146,7 @@ defmodule FretboardWeb.FretboardLive do
   defp analysis_state(%{analysis: a} = assigns) when a in [nil, {:empty}] do
     ~H"""
     <div class="analyzer-empty">
-      Pulsa notas en el diapasón para identificar un acorde
+      Click notes on the fretboard to identify a chord
     </div>
     """
   end
@@ -1156,7 +1154,7 @@ defmodule FretboardWeb.FretboardLive do
   defp analysis_state(%{analysis: {:single, _note}} = assigns) do
     ~H"""
     <div class="analyzer-single-note">
-      Nota: {@analysis |> elem(1)}
+      Note: {@analysis |> elem(1)}
     </div>
     """
   end
@@ -1164,7 +1162,7 @@ defmodule FretboardWeb.FretboardLive do
   defp analysis_state(%{analysis: {:interval, _note_a, _note_b, _label}} = assigns) do
     ~H"""
     <div class="analyzer-interval">
-      Intervalo: {@analysis |> elem(1)}-{@analysis |> elem(2)} ({@analysis |> elem(3)})
+      Interval: {@analysis |> elem(1)}-{@analysis |> elem(2)} ({@analysis |> elem(3)})
     </div>
     """
   end
@@ -1173,7 +1171,7 @@ defmodule FretboardWeb.FretboardLive do
        when interpretations == [] do
     ~H"""
     <div class="analyzer-empty">
-      No se encontró un acorde para estas notas.
+      No chord found for these notes.
     </div>
     """
   end
@@ -1361,7 +1359,7 @@ defmodule FretboardWeb.FretboardLive do
 
   Relative modes (the 7 diatonic modes that share the same note set) are
   collapsed: the major and relative minor are shown prominently while the
-  remaining 5 modes are summarized as "N modos adicionales". Non-modal
+  remaining 5 modes are summarized as "N additional modes". Non-modal
   scales (pentatonic, blues, harmonic_minor, …) are shown individually.
 
   Only suggestions at the maximum score are grouped; when no suggestion

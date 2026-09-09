@@ -172,7 +172,7 @@ defmodule Fretboard.MusicTest do
     end
 
     test "includes ukelele tuple" do
-      assert {:ukelele, "Ukelele"} in Music.instruments()
+      assert {:ukelele, "Ukulele"} in Music.instruments()
     end
   end
 
@@ -209,7 +209,7 @@ defmodule Fretboard.MusicTest do
 
     test "returns ukelele map with correct keys" do
       ukelele = Music.instrument(:ukelele)
-      assert ukelele.name == "Ukelele"
+      assert ukelele.name == "Ukulele"
       assert ukelele.strings == 4
       assert ukelele.standard_tuning == ["G", "C", "E", "A"]
       assert ukelele.frets == 24

@@ -7,7 +7,7 @@ defmodule Fretboard.Music.Analyzer do
   string order. Two consequences:
 
     * the bass of a shape is its lowest sounding pitch, so reentrant
-      tunings (standard high-G ukelele) and real pitch crossings work;
+      tunings (standard high-G ukulele) and real pitch crossings work;
     * two notes sharing a pitch class an octave apart are reported as
       an Octave instead of collapsing into a single note.
   """

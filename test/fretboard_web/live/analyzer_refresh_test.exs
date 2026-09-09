@@ -40,7 +40,7 @@ defmodule FretboardWeb.AnalyzerRefreshTest do
     test "empty state is shown initially on the analyzer tab", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/?tab=analyzer")
 
-      assert html =~ "Pulsa notas en el diapasón para identificar un acorde"
+      assert html =~ "Click notes on the fretboard to identify a chord"
       refute html =~ "analysis-card"
     end
 
@@ -48,18 +48,18 @@ defmodule FretboardWeb.AnalyzerRefreshTest do
       {:ok, view, html} = live(conn, "/?tab=analyzer")
 
       # Sanity: empty state before any clicks.
-      assert html =~ "Pulsa notas en el diapasón para identificar un acorde"
+      assert html =~ "Click notes on the fretboard to identify a chord"
       refute html =~ "analysis-card"
 
       # Click 1: mark string 5 fret 3 (G). With a single note we expect the
-      # "Nota:" single-note state, NOT the empty state.
+      # "Note:" single-note state, NOT the empty state.
       html =
         view
         |> element("[phx-click='toggle_note'][phx-value-string='5'][phx-value-fret='3']")
         |> render_click()
 
-      assert html =~ "Nota:"
-      refute html =~ "Pulsa notas en el diapasón para identificar un acorde"
+      assert html =~ "Note:"
+      refute html =~ "Click notes on the fretboard to identify a chord"
 
       # Click 2: mark string 4 fret 0 (B, open). Two notes → interval state.
       html =
@@ -67,9 +67,9 @@ defmodule FretboardWeb.AnalyzerRefreshTest do
         |> element("[phx-click='toggle_note'][phx-value-string='4'][phx-value-fret='0']")
         |> render_click()
 
-      assert html =~ "Intervalo:"
-      refute html =~ "Nota:"
-      refute html =~ "Pulsa notas en el diapasón para identificar un acorde"
+      assert html =~ "Interval:"
+      refute html =~ "Note:"
+      refute html =~ "Click notes on the fretboard to identify a chord"
 
       # Click 3: mark string 2 fret 0 (D, open). Three notes G-B-D → G major.
       html =
@@ -82,8 +82,8 @@ defmodule FretboardWeb.AnalyzerRefreshTest do
       # due to the bug: the analysis results do not refresh after the patch.
       assert html =~ "analysis-card"
       assert html =~ "Gmaj"
-      refute html =~ "Pulsa notas en el diapasón para identificar un acorde"
-      refute html =~ "Intervalo:"
+      refute html =~ "Click notes on the fretboard to identify a chord"
+      refute html =~ "Interval:"
     end
 
     test "clicking toggle_note to remove a note reverts the analysis results", %{conn: conn} do
@@ -117,7 +117,7 @@ defmodule FretboardWeb.AnalyzerRefreshTest do
       # state, and the chord cards must disappear.
       refute html =~ "analysis-card"
       refute html =~ "Gmaj"
-      assert html =~ "Intervalo:"
+      assert html =~ "Interval:"
     end
 
     test "handle_params is invoked after push_patch (URL carries marked notes)", %{conn: conn} do
@@ -137,7 +137,7 @@ defmodule FretboardWeb.AnalyzerRefreshTest do
       # And the rendered page must reflect the note we just marked via the
       # patch path — not just the URL.
       html = render(view)
-      assert html =~ "Nota:"
+      assert html =~ "Note:"
       assert html =~ "G"
     end
   end

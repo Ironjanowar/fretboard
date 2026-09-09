@@ -594,7 +594,7 @@ defmodule Fretboard.Music.Scale do
   defp format_selected_groups(selected, chords, total) do
     selected
     |> Enum.reverse()
-    |> Enum.map(fn {cand, covered_indices} ->
+    |> Enum.map(fn {cand, _covered_indices} ->
       %{
         key: %{
           tonic: cand.tonic,
@@ -603,7 +603,15 @@ defmodule Fretboard.Music.Scale do
           total: total,
           diatonic_chords: cand.diatonic_chords
         },
-        chords: Enum.map(covered_indices, &Enum.at(chords, &1))
+        # Full membership: list EVERY chord whose notes fit this key (the
+        # candidate's full `covered` set), not only the chords the greedy
+        # cover assigned exclusively to this group. The exclusive indices
+        # kept in the tuples still drive the singleton rule and the
+        # unmatched computation, whose output is unchanged.
+        chords:
+          cand.covered
+          |> Enum.sort()
+          |> Enum.map(&Enum.at(chords, &1))
       }
     end)
     # Order groups by coverage (chord count) descending.
@@ -611,7 +619,7 @@ defmodule Fretboard.Music.Scale do
   end
 
   defp unmatched_chords(selected, chords) do
-    # Indices are preserved directly in selected — no re-búsqueda needed.
+    # Indices are preserved directly in selected — no repeat lookup needed.
     covered_indices =
       selected
       |> Enum.flat_map(fn {_cand, indices} -> indices end)

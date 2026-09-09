@@ -20,9 +20,9 @@ defmodule FretboardWeb.URLBoundaryLiveTest do
       assert has_element?(view, "#string-select-0 option[value='E'][selected]")
       render_click(view, "close_tuning_modal")
       render_click(view, "toggle_tab", %{"tab" => "analyzer"})
-      assert render(view) =~ "Pulsa notas en el diapasón para identificar un acorde"
+      assert render(view) =~ "Click notes on the fretboard to identify a chord"
       render_click(view, "toggle_note", %{"string" => "0", "fret" => "0"})
-      assert render(view) =~ "Nota:"
+      assert render(view) =~ "Note:"
     end
   end
 
@@ -30,7 +30,7 @@ defmodule FretboardWeb.URLBoundaryLiveTest do
     conn =
       get(conn, "/?instrument=ukelele&tuning=G,C,E,A&chords=Cmaj,Amin&tab=analyzer&marked=1-0")
 
-    assert html_response(conn, 200) =~ "Nota:"
+    assert html_response(conn, 200) =~ "Note:"
     {:ok, view, _} = live(conn)
     render_click(view, "toggle_note", %{"string" => "2", "fret" => "0"})
     assert render(view) =~ "Major 3rd"

@@ -2,7 +2,7 @@ defmodule Fretboard.Music.Instrument do
   @moduledoc """
   Instrument metadata and tuning presets. MIDI pitches are the single source
   of tuning data; legacy note-name APIs are derived from this catalog.
-  String order is physical, not pitch order (ukelele Standard is high-G).
+  String order is physical, not pitch order (ukulele Standard is high-G).
   """
 
   alias Fretboard.Music.Pitch
@@ -45,7 +45,7 @@ defmodule Fretboard.Music.Instrument do
       ]
     },
     ukelele: %{
-      name: "Ukelele",
+      name: "Ukulele",
       strings: 4,
       frets: 24,
       pitch_presets: [

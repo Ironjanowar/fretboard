@@ -820,7 +820,7 @@ defmodule FretboardWeb.FretboardLiveTest do
       assert html =~ "Guitar"
       assert html =~ "Bass (4-string)"
       assert html =~ "Bass (5-string)"
-      assert html =~ "Ukelele"
+      assert html =~ "Ukulele"
     end
 
     test "instrument selector defaults to Guitar", %{conn: conn} do
@@ -1052,46 +1052,46 @@ defmodule FretboardWeb.FretboardLiveTest do
       # C major + A minor → both diatonic in C major / A minor
       {:ok, _view, html} = live(conn, "/?chords=Cmaj,Amin")
 
-      assert html =~ "Tonalidades compatibles"
+      assert html =~ "Compatible keys"
       assert html =~ "key-suggestions-wrapper"
     end
 
     test "with 0 chords, suggestions section does not appear", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/")
 
-      refute html =~ "Tonalidades compatibles"
+      refute html =~ "Compatible keys"
       refute html =~ "key-suggestions-wrapper"
     end
 
     test "with 1 chord, suggestions section does not appear", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/?chords=Cmaj")
 
-      refute html =~ "Tonalidades compatibles"
+      refute html =~ "Compatible keys"
       refute html =~ "key-suggestions-wrapper"
     end
 
-    test "with 2+ incompatible chords, shows 'No se encontraron' message", %{conn: conn} do
+    test "with 2+ incompatible chords, shows 'No compatible keys found' message", %{conn: conn} do
       # C major (C-E-G) + F# major (F#-A#-C#) have no common diatonic key
       # F# is URL-encoded as F%23 (# is a fragment delimiter in URLs)
       {:ok, view, _html} = live(conn, "/?chords=Cmaj,F%23maj")
       html = render_async(view)
 
-      assert html =~ "Tonalidades compatibles"
-      assert html =~ "No se encontraron tonalidades compatibles con estos acordes."
+      assert html =~ "Compatible keys"
+      assert html =~ "No compatible keys found for these chords."
     end
 
-    test "suggestions section shows 'Ver tonalidad' buttons", %{conn: conn} do
+    test "suggestions section shows 'View key' buttons", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/?chords=Cmaj,Amin")
       html = render_async(view)
 
-      assert html =~ "Ver tonalidad"
+      assert html =~ "View key"
       assert html =~ "apply_suggested_key"
     end
 
-    test "clicking 'Ver tonalidad' replaces chords with diatonic set", %{conn: conn} do
+    test "clicking 'View key' replaces chords with diatonic set", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/?chords=Cmaj,Amin")
 
-      # Click "Ver tonalidad" for C major → 7 diatonic triads
+      # Click "View key" for C major → 7 diatonic triads
       html = render_click(view, "apply_suggested_key", %{"tonic" => "C", "scale_type" => "major"})
 
       # Major scale produces 7 diatonic triads
@@ -1106,12 +1106,12 @@ defmodule FretboardWeb.FretboardLiveTest do
       html = render_click(view, "apply_suggested_key", %{"tonic" => "C", "scale_type" => "major"})
 
       # After applying C major, we have 7 diatonic chords → suggestions recalculate
-      assert html =~ "Tonalidades compatibles"
+      assert html =~ "Compatible keys"
     end
   end
 
   describe "apply_suggested_key chord mode detection" do
-    # `apply_suggested_key` ("Ver tonalidad" button) must detect whether the
+    # `apply_suggested_key` ("View key" button) must detect whether the
     # currently active chords are triads or 7ths and generate a diatonic set
     # in the SAME mode — it must NOT fall back to the Key modal's
     # key_chord_mode assign (which defaults to :triad).
