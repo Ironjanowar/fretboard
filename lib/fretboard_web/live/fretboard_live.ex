@@ -1,15 +1,18 @@
 defmodule FretboardWeb.FretboardLive do
   @moduledoc """
-  Main LiveView for the fretboard visualizer.
+  Main LiveView for the chord visualizer.
 
-  Renders an SVG fretboard with 24 frets and a configurable number of
-  strings (6-string guitar, 4- or 5-string bass). Supports adding/removing
-  chords, coloring notes by chord, and selecting tuning presets.
+  Renders a fretboard SVG for fretted instruments (guitar, bass, ukulele)
+  or a fixed piano keyboard for the piano instrument, with a configurable
+  tuning for strings and chord-note coloring shared by both. Supports
+  adding/removing chords and highlighting, plus an interactive note
+  analyzer tab for fretted instruments.
   """
 
   use FretboardWeb, :live_view
 
   import FretboardWeb.FretboardSVG, only: [fretboard_svg: 1, analyzer_fretboard_svg: 1]
+  import FretboardWeb.PianoKeyboard, only: [piano_keyboard: 1]
   import FretboardWeb.Modals
   import Phoenix.LiveView.JS, only: [toggle: 1]
 
@@ -65,27 +68,52 @@ defmodule FretboardWeb.FretboardLive do
   end
 
   defp decode_socket_state(params, previous) do
-    {instrument, tuning_state, active_chords, highlighted_chord} =
-      Music.decode_pitch_params(params)
+    page = Music.decode_page_params(params)
 
+    case page do
+      %{instrument: :piano} -> piano_state(page, previous)
+      %{instrument: instrument} -> fretted_state(page, instrument, previous)
+    end
+  end
+
+  # Piano state: a fixed keyboard with no tuning, no fretboard data, and no
+  # analysis until the phase-3 analyzer interaction lands.
+  defp piano_state(page, _previous) do
+    %{
+      instrument: :piano,
+      tuning: [],
+      tuning_state: nil,
+      active_chords: page.active_chords,
+      active_chord_colors: active_chord_colors(page.active_chords),
+      highlighted_chord: page.highlighted_chord,
+      fretboard: [],
+      keyboard_keys: Music.keyboard_data(piano_range(), page.active_chords),
+      svg: nil,
+      modal_tuning_state: nil,
+      tab: page.tab,
+      marked_notes: %{},
+      selected_keys: page.selection,
+      analysis: nil
+    }
+  end
+
+  # Fretted state: derived exactly as before, from the page contract.
+  defp fretted_state(page, instrument, previous) do
+    tuning_state = page.tuning_state
     tuning = Music.tuning_notes(tuning_state)
+    active_chords = page.active_chords
 
     fretboard =
       if tuning == previous[:tuning] and active_chords == previous[:active_chords],
         do: previous.fretboard,
         else: Music.fretboard_data(tuning, active_chords)
 
+    marked_notes = page.selection
     string_count = Music.instrument_strings(instrument)
-    tab = Music.decode_tab(params["tab"])
-
-    marked_notes =
-      params["marked"]
-      |> Music.decode_marked()
-      |> Music.filter_marked_notes(string_count)
 
     analysis =
       cond do
-        tab != :analyzer ->
+        page.tab != :analyzer ->
           nil
 
         previous[:tab] == :analyzer and marked_notes == previous[:marked_notes] and
@@ -102,15 +130,19 @@ defmodule FretboardWeb.FretboardLive do
       tuning_state: tuning_state,
       active_chords: active_chords,
       active_chord_colors: active_chord_colors(active_chords),
-      highlighted_chord: highlighted_chord,
+      highlighted_chord: page.highlighted_chord,
       fretboard: fretboard,
+      keyboard_keys: [],
       svg: svg_params(string_count),
       modal_tuning_state: tuning_state,
-      tab: tab,
+      tab: page.tab,
       marked_notes: marked_notes,
+      selected_keys: [],
       analysis: analysis
     }
   end
+
+  defp piano_range, do: Music.instrument(:piano)[:pitch_range]
 
   defp svg_params(string_count) do
     fb_w = @left_margin + (@fret_count + 1) * @fret_width
@@ -177,15 +209,7 @@ defmodule FretboardWeb.FretboardLive do
       {:noreply, socket}
     else
       active_chords = socket.assigns.active_chords ++ [chord]
-
-      {:noreply,
-       push_url_patch(
-         socket,
-         socket.assigns.instrument,
-         socket.assigns.tuning_state,
-         active_chords,
-         socket.assigns.highlighted_chord
-       )}
+      {:noreply, push_page_patch(socket, active_chords: active_chords)}
     end
   end
 
@@ -196,22 +220,24 @@ defmodule FretboardWeb.FretboardLive do
     highlighted_chord = remaining_highlight(socket.assigns, active_chords)
 
     {:noreply,
-     push_url_patch(
-       socket,
-       socket.assigns.instrument,
-       socket.assigns.tuning_state,
-       active_chords,
-       highlighted_chord
+     push_page_patch(socket,
+       active_chords: active_chords,
+       highlighted_chord: highlighted_chord
      )}
   end
 
   @impl true
   def handle_event("open_tuning_modal", _params, socket) do
-    {:noreply,
-     assign(socket,
-       show_tuning_modal: true,
-       modal_tuning_state: socket.assigns.tuning_state
-     )}
+    if socket.assigns.instrument == :piano do
+      # Pianos have no tuning; the event is ignored entirely.
+      {:noreply, socket}
+    else
+      {:noreply,
+       assign(socket,
+         show_tuning_modal: true,
+         modal_tuning_state: socket.assigns.tuning_state
+       )}
+    end
   end
 
   @impl true
@@ -221,49 +247,56 @@ defmodule FretboardWeb.FretboardLive do
 
   @impl true
   def handle_event("select_preset", %{"preset" => preset_name}, socket) do
-    case Music.preset_tuning(socket.assigns.instrument, preset_name) do
-      %{pitches: _} = state ->
-        {:noreply, assign(socket, modal_tuning_state: state)}
+    if socket.assigns.instrument == :piano do
+      {:noreply, socket}
+    else
+      case Music.preset_tuning(socket.assigns.instrument, preset_name) do
+        %{pitches: _} = state ->
+          {:noreply, assign(socket, modal_tuning_state: state)}
 
-      nil ->
-        {:noreply, socket}
+        nil ->
+          {:noreply, socket}
+      end
     end
   end
 
   @impl true
   def handle_event("change_string", %{"string" => string_str, "note" => note}, socket) do
-    string_count = Music.instrument_strings(socket.assigns.instrument)
-
-    with {string_idx, ""} <- Integer.parse(string_str),
-         true <- string_idx in 0..(string_count - 1),
-         true <- note in Music.chromatic_scale() do
-      state =
-        Music.change_tuning_note(
-          socket.assigns.instrument,
-          socket.assigns.modal_tuning_state,
-          string_idx,
-          note
-        )
-
-      {:noreply, assign(socket, modal_tuning_state: state)}
+    if socket.assigns.instrument == :piano do
+      {:noreply, socket}
     else
-      _invalid -> {:noreply, socket}
+      string_count = Music.instrument_strings(socket.assigns.instrument)
+
+      with {string_idx, ""} <- Integer.parse(string_str),
+           true <- string_idx in 0..(string_count - 1),
+           true <- note in Music.chromatic_scale() do
+        state =
+          Music.change_tuning_note(
+            socket.assigns.instrument,
+            socket.assigns.modal_tuning_state,
+            string_idx,
+            note
+          )
+
+        {:noreply, assign(socket, modal_tuning_state: state)}
+      else
+        _invalid -> {:noreply, socket}
+      end
     end
   end
 
   @impl true
   def handle_event("apply_tuning", _params, socket) do
-    tuning = socket.assigns.modal_tuning_state
+    if socket.assigns.instrument == :piano do
+      {:noreply, socket}
+    else
+      tuning = socket.assigns.modal_tuning_state
 
-    {:noreply,
-     socket
-     |> assign(show_tuning_modal: false)
-     |> push_url_patch(
-       socket.assigns.instrument,
-       tuning,
-       socket.assigns.active_chords,
-       socket.assigns.highlighted_chord
-     )}
+      {:noreply,
+       socket
+       |> assign(show_tuning_modal: false)
+       |> push_page_patch(tuning_state: tuning)}
+    end
   end
 
   @impl true
@@ -313,7 +346,7 @@ defmodule FretboardWeb.FretboardLive do
     {:noreply,
      socket
      |> assign(show_key_modal: false)
-     |> push_url_patch(socket.assigns.instrument, socket.assigns.tuning_state, active_chords, nil)}
+     |> push_page_patch(active_chords: active_chords, highlighted_chord: nil)}
   end
 
   @impl true
@@ -349,7 +382,7 @@ defmodule FretboardWeb.FretboardLive do
     {:noreply,
      socket
      |> assign(show_progression_modal: false)
-     |> push_url_patch(socket.assigns.instrument, socket.assigns.tuning_state, active_chords, nil)}
+     |> push_page_patch(active_chords: active_chords, highlighted_chord: nil)}
   end
 
   @impl true
@@ -357,14 +390,7 @@ defmodule FretboardWeb.FretboardLive do
     index = String.to_integer(index_str)
     highlighted_chord = toggled_highlight(socket.assigns, index)
 
-    {:noreply,
-     push_url_patch(
-       socket,
-       socket.assigns.instrument,
-       socket.assigns.tuning_state,
-       socket.assigns.active_chords,
-       highlighted_chord
-     )}
+    {:noreply, push_page_patch(socket, highlighted_chord: highlighted_chord)}
   end
 
   @impl true
@@ -374,19 +400,14 @@ defmodule FretboardWeb.FretboardLive do
     if new_instrument == socket.assigns.instrument do
       {:noreply, socket}
     else
-      new_tuning = Music.preset_tuning(new_instrument, "Standard")
-      new_string_count = Music.instrument_strings(new_instrument)
-      filtered_marked = Music.filter_marked_notes(socket.assigns.marked_notes, new_string_count)
+      selection = switch_selection(socket.assigns, new_instrument)
 
       {:noreply,
-       push_analyzer_patch(
-         socket,
-         new_instrument,
-         new_tuning,
-         socket.assigns.active_chords,
-         nil,
-         socket.assigns.tab,
-         filtered_marked
+       push_page_patch(socket,
+         instrument: new_instrument,
+         tuning_state: standard_tuning(new_instrument),
+         selection: selection,
+         highlighted_chord: nil
        )}
     end
   end
@@ -396,14 +417,7 @@ defmodule FretboardWeb.FretboardLive do
     mode = Music.infer_chord_mode(socket.assigns.active_chords)
     active_chords = Music.diatonic_chords(tonic, String.to_existing_atom(scale_type), mode)
 
-    {:noreply,
-     push_url_patch(
-       socket,
-       socket.assigns.instrument,
-       socket.assigns.tuning_state,
-       active_chords,
-       nil
-     )}
+    {:noreply, push_page_patch(socket, active_chords: active_chords, highlighted_chord: nil)}
   end
 
   @impl true
@@ -418,20 +432,7 @@ defmodule FretboardWeb.FretboardLive do
     if target_tab == socket.assigns.tab do
       {:noreply, socket}
     else
-      # Preserve marked notes across tab switches so the analyzer state
-      # survives round-trips through the visualizer (encoded in the URL).
-      marked_notes = socket.assigns.marked_notes
-
-      {:noreply,
-       push_analyzer_patch(
-         socket,
-         socket.assigns.instrument,
-         socket.assigns.tuning_state,
-         socket.assigns.active_chords,
-         socket.assigns.highlighted_chord,
-         target_tab,
-         marked_notes
-       )}
+      {:noreply, push_page_patch(socket, tab: target_tab)}
     end
   end
 
@@ -451,43 +452,32 @@ defmodule FretboardWeb.FretboardLive do
         Map.put(socket.assigns.marked_notes, string, fret)
       end
 
-    {:noreply,
-     socket
-     |> push_analyzer_patch(
-       socket.assigns.instrument,
-       socket.assigns.tuning_state,
-       socket.assigns.active_chords,
-       socket.assigns.highlighted_chord,
-       socket.assigns.tab,
-       new_marked
-     )}
+    {:noreply, push_page_patch(socket, selection: new_marked)}
   end
 
   @impl true
   def handle_event("clear_notes", _params, socket) do
-    {:noreply,
-     socket
-     |> push_analyzer_patch(
-       socket.assigns.instrument,
-       socket.assigns.tuning_state,
-       socket.assigns.active_chords,
-       socket.assigns.highlighted_chord,
-       socket.assigns.tab,
-       %{}
-     )}
+    {:noreply, push_page_patch(socket, selection: %{})}
   end
 
   @impl true
   def handle_event("clear_all_chords", _params, socket) do
-    {:noreply,
-     push_url_patch(
-       socket,
-       socket.assigns.instrument,
-       socket.assigns.tuning_state,
-       [],
-       nil
-     )}
+    {:noreply, push_page_patch(socket, active_chords: [], highlighted_chord: nil)}
   end
+
+  # Switching between string instruments keeps marked positions valid for
+  # the new string count (existing behavior); crossing the piano boundary
+  # clears the selection entirely - piano keys and string positions are
+  # never converted into each other.
+  defp switch_selection(%{instrument: :piano}, _fretted_instrument), do: %{}
+
+  defp switch_selection(_fretted_assigns, :piano), do: []
+
+  defp switch_selection(%{marked_notes: marked}, new_instrument),
+    do: Music.filter_marked_notes(marked, Music.instrument_strings(new_instrument))
+
+  defp standard_tuning(:piano), do: nil
+  defp standard_tuning(instrument), do: Music.preset_tuning(instrument, "Standard")
 
   @impl true
   def render(assigns) do
@@ -539,6 +529,7 @@ defmodule FretboardWeb.FretboardLive do
         </div>
 
         <button
+          :if={@instrument != :piano}
           type="button"
           phx-click="open_tuning_modal"
           class="btn btn-secondary"
@@ -564,7 +555,7 @@ defmodule FretboardWeb.FretboardLive do
             name="instrument"
             class="form-select"
           >
-            <%= for {value, label} <- Music.fretted_instruments() do %>
+            <%= for {value, label} <- Music.instruments() do %>
               <option value={value} selected={@instrument == value}>
                 {label}
               </option>
@@ -640,9 +631,11 @@ defmodule FretboardWeb.FretboardLive do
   # Visualizer tab
   # ---------------------------------------------------------------------------
 
+  attr :instrument, :atom, required: true
   attr :svg, :map, required: true
   attr :tuning, :list, required: true
   attr :fretboard, :list, required: true
+  attr :keyboard_keys, :list, required: true
   attr :active_chords, :list, required: true
   attr :active_chord_colors, :list, required: true
   attr :chord_colors, :list, required: true
@@ -653,8 +646,16 @@ defmodule FretboardWeb.FretboardLive do
 
   defp visualizer_tab(assigns) do
     ~H"""
-    <%!-- Visualizer: standard fretboard with chord notes --%>
+    <%!-- Visualizer: keyboard for piano, fretboard with chord notes otherwise --%>
+    <.piano_keyboard
+      :if={@instrument == :piano}
+      keys={@keyboard_keys}
+      active_chords={@active_chords}
+      chord_colors={@active_chord_colors}
+      highlighted_chord={@highlighted_chord}
+    />
     <.fretboard_svg
+      :if={@instrument != :piano}
       svg={@svg}
       tuning={@tuning}
       fretboard={@fretboard}
@@ -1051,6 +1052,7 @@ defmodule FretboardWeb.FretboardLive do
   # Analyzer tab
   # ---------------------------------------------------------------------------
 
+  attr :instrument, :atom, required: true
   attr :svg, :map, required: true
   attr :tuning, :list, required: true
   attr :marked_notes, :map, required: true
@@ -1058,26 +1060,32 @@ defmodule FretboardWeb.FretboardLive do
 
   defp analyzer_tab(assigns) do
     ~H"""
-    <%!-- Analyzer tab: interactive fretboard + analysis results --%>
-    <.analyzer_fretboard_svg
-      svg={@svg}
-      tuning={@tuning}
-      marked_notes={@marked_notes}
-    />
-
-    <%!-- Clear button (only shown when there are marked notes) --%>
-    <div :if={map_size(@marked_notes) > 0} class="analyzer-results">
-      <button
-        type="button"
-        class="btn-clear"
-        phx-click="clear_notes"
-      >
-        ✕ Clear notes
-      </button>
+    <div :if={@instrument == :piano} class="analyzer-empty" id="piano-analyzer-pending">
+      Piano analyzer is coming in the next update
     </div>
 
-    <%!-- Analysis results --%>
-    <.analyzer_results analysis={@analysis} />
+    <%= if @instrument != :piano do %>
+      <%!-- Analyzer tab: interactive fretboard + analysis results --%>
+      <.analyzer_fretboard_svg
+        svg={@svg}
+        tuning={@tuning}
+        marked_notes={@marked_notes}
+      />
+
+      <%!-- Clear button (only shown when there are marked notes) --%>
+      <div :if={map_size(@marked_notes) > 0} class="analyzer-results">
+        <button
+          type="button"
+          class="btn-clear"
+          phx-click="clear_notes"
+        >
+          ✕ Clear notes
+        </button>
+      </div>
+
+      <%!-- Analysis results --%>
+      <.analyzer_results analysis={@analysis} />
+    <% end %>
     """
   end
 
@@ -1100,8 +1108,9 @@ defmodule FretboardWeb.FretboardLive do
 
   defp modals(assigns) do
     ~H"""
-    <%!-- Tuning Modal (visible in both tabs) --%>
+    <%!-- Tuning Modal (visible in both tabs; pianos have no tuning) --%>
     <.tuning_modal
+      :if={@instrument != :piano}
       show={@show_tuning_modal}
       modal_tuning_state={@modal_tuning_state}
       instrument={@instrument}
@@ -1290,69 +1299,32 @@ defmodule FretboardWeb.FretboardLive do
   defp inversion_label(5), do: "5th inversion"
   defp inversion_label(6), do: "6th inversion"
 
-  defp push_url_patch(socket, instrument, tuning, active_chords, highlighted_chord) do
-    push_analyzer_patch(
-      socket,
-      instrument,
-      tuning,
-      active_chords,
-      highlighted_chord,
-      socket.assigns.tab,
-      socket.assigns.marked_notes
-    )
-  end
+  # Builds the canonical instrument-aware page state from the socket assigns
+  # merged with the given overrides, and pushes the patch. `handle_params`
+  # remains the only place that re-derives state from the URL.
+  defp push_page_patch(socket, overrides) do
+    state = %{
+      instrument: Keyword.get(overrides, :instrument, socket.assigns.instrument),
+      tuning_state:
+        Keyword.get_lazy(overrides, :tuning_state, fn -> socket.assigns.tuning_state end),
+      active_chords: Keyword.get(overrides, :active_chords, socket.assigns.active_chords),
+      highlighted_chord:
+        Keyword.get(overrides, :highlighted_chord, socket.assigns.highlighted_chord),
+      tab: Keyword.get(overrides, :tab, socket.assigns.tab),
+      selection: Keyword.get_lazy(overrides, :selection, fn -> page_selection(socket.assigns) end)
+    }
 
-  # Pushes a URL patch that includes the `tab` and `marked` params in addition
-  # to the standard instrument/tuning/chords/highlight params. The `tab` param
-  # is only included when it is not the default (`:visualizer`); the `marked`
-  # param is only included when there are marked notes.
-  defp push_analyzer_patch(
-         socket,
-         instrument,
-         tuning,
-         active_chords,
-         highlighted_chord,
-         tab,
-         marked_notes
-       ) do
-    path =
-      build_patch_path(
-        instrument,
-        tuning,
-        active_chords,
-        highlighted_chord,
-        tab: tab,
-        marked: marked_notes
-      )
+    params = Music.encode_page_params(state)
+    query = URI.encode_query(params)
+    path = if query == "", do: "/", else: "/?#{query}"
 
     push_patch(socket, to: path)
   end
 
-  defp build_patch_path(instrument, tuning, active_chords, highlighted_chord, opts) do
-    tab = Keyword.get(opts, :tab, :visualizer)
-    marked = Keyword.get(opts, :marked, %{})
-
-    params =
-      instrument
-      |> Music.encode_pitch_params(tuning, active_chords, highlighted_chord)
-      |> maybe_put_tab(tab)
-      |> maybe_put_marked(marked)
-
-    query = URI.encode_query(params)
-    if query == "", do: "/", else: "/?#{query}"
-  end
-
-  defp maybe_put_tab(params, :visualizer), do: params
-  defp maybe_put_tab(params, :analyzer), do: Map.put(params, "tab", "analyzer")
-
-  defp maybe_put_marked(params, marked) when map_size(marked) == 0, do: params
-
-  defp maybe_put_marked(params, marked) do
-    case Music.encode_marked(marked) do
-      nil -> params
-      encoded -> Map.put(params, "marked", encoded)
-    end
-  end
+  # The URL-backed selection: marked string positions for fretted
+  # instruments, selected absolute pitches for piano.
+  defp page_selection(%{instrument: :piano, selected_keys: keys}), do: keys
+  defp page_selection(%{marked_notes: marked}), do: marked
 
   @doc """
   Groups flat key suggestions into display rows for the UI.

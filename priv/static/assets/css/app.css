@@ -762,9 +762,52 @@ body {
   color: #e5e7eb;
 }
 
-/* ===== Desktop: min-width for fretboard SVG (moved from inline style) ===== */
+/* ===== Piano Keyboard ===== */
+.piano-wrapper {
+  width: 100%;
+  max-width: 80rem;
+  overflow-x: auto;
+}
+
+.piano-svg {
+  width: 100%;
+  display: block;
+}
+
+.piano-key-rect {
+  cursor: default;
+}
+
+.piano-key--white .piano-key-rect {
+  fill: #fafafa;
+  stroke: #4b5563;
+  stroke-width: 1;
+}
+
+.piano-key--black .piano-key-rect {
+  fill: #1f2937;
+  stroke: #111827;
+  stroke-width: 1;
+}
+
+.piano-key-marker {
+  stroke: #111827;
+  stroke-width: 1;
+}
+
+.piano-note-label {
+  fill: #1a1a1a;
+  font-size: 11px;
+  font-weight: bold;
+  text-anchor: middle;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ===== Desktop: min-width for fretboard and piano SVGs ===== */
 @media (min-width: 1280px) {
-  .fretboard-svg {
+  .fretboard-svg,
+  .piano-svg {
     min-width: 900px;
   }
 }
