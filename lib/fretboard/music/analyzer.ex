@@ -35,10 +35,24 @@ defmodule Fretboard.Music.Analyzer do
           | {:interval, String.t(), String.t(), String.t()}
           | {:chords, [String.t()], String.t(), [map()]}
   def analyzer_state(marked_notes, string_pitches) do
-    pitches =
-      marked_notes
-      |> Enum.map(fn {string, fret} -> Enum.at(string_pitches, string) + fret end)
-      |> Enum.sort()
+    marked_notes
+    |> Enum.map(fn {string, fret} -> Enum.at(string_pitches, string) + fret end)
+    |> analyze_pitches()
+  end
+
+  @doc """
+  Computes the analysis state from absolute sounding pitches.
+
+  Input order and repeated pitches do not affect the result. Returns the
+  same analysis tuples as `analyzer_state/2`, with the lowest pitch as bass.
+  """
+  @spec analyze_pitches([integer()]) ::
+          {:empty}
+          | {:single, String.t()}
+          | {:interval, String.t(), String.t(), String.t()}
+          | {:chords, [String.t()], String.t(), [map()]}
+  def analyze_pitches(pitches) do
+    pitches = Enum.sort(pitches)
 
     # Sorting before deduplication retains the lowest height of each class.
     classes = Enum.uniq_by(pitches, &Pitch.note_name/1)

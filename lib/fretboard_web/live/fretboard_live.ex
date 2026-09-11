@@ -564,7 +564,7 @@ defmodule FretboardWeb.FretboardLive do
             name="instrument"
             class="form-select"
           >
-            <%= for {value, label} <- Music.instruments() do %>
+            <%= for {value, label} <- Music.fretted_instruments() do %>
               <option value={value} selected={@instrument == value}>
                 {label}
               </option>

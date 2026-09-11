@@ -7,7 +7,18 @@ defmodule Fretboard.Music do
   `Analyzer` internally.
   """
 
-  alias Fretboard.Music.{Analyzer, Chord, Instrument, Note, Pitch, Progression, Scale, URLCodec}
+  alias Fretboard.Music.{
+    Analyzer,
+    Chord,
+    Instrument,
+    Keyboard,
+    Note,
+    PageCodec,
+    Pitch,
+    Progression,
+    Scale,
+    URLCodec
+  }
 
   @typedoc """
   A tuning state: the exact MIDI pitches of every open string plus the
@@ -39,6 +50,10 @@ defmodule Fretboard.Music do
   """
   @spec instruments() :: [{atom(), String.t()}]
   def instruments, do: Instrument.instruments()
+
+  @doc "Returns fretted instrument keys and labels in display order."
+  @spec fretted_instruments() :: [{atom(), String.t()}]
+  def fretted_instruments, do: Instrument.fretted_instruments()
 
   @doc """
   Returns the full instrument definition map for the given instrument key.
@@ -226,6 +241,16 @@ defmodule Fretboard.Music do
   end
 
   @doc """
+  Builds musical keyboard data in pitch order supplied by the caller.
+
+  Each key contains its absolute `:pitch`, display `:note`, and `:chords`
+  membership labels in active chord order. All octaves share memberships.
+  """
+  @spec keyboard_data(Enumerable.t(), [map()]) :: [map()]
+  def keyboard_data(pitches, active_chords),
+    do: Keyboard.data(pitches, build_chord_lookup(active_chords))
+
+  @doc """
   Encodes tuning and active chords into URL query params.
   """
   @spec encode_params([String.t()], [map()]) :: map()
@@ -361,6 +386,25 @@ defmodule Fretboard.Music do
   defdelegate decode_pitch_params(params), to: URLCodec
 
   @doc """
+  Decodes the instrument-aware page state: `%{instrument:, tuning_state:,
+  active_chords:, highlighted_chord:, tab:, selection:}`. Piano pages decode a
+  sorted list of unique selected absolute pitches; fretted pages decode the
+  legacy tuning state and a marked-position map. Fields belonging to the other
+  instrument kind are ignored.
+  """
+  @spec decode_page_params(map()) :: map()
+  defdelegate decode_page_params(params), to: PageCodec
+
+  @doc """
+  Encodes the instrument-aware page state into canonical shareable URL
+  parameters. Piano pages emit `keys` (ascending, deduplicated, omitted when
+  empty) and never tuning fields; fretted pages retain the legacy encoding.
+  Default values are omitted.
+  """
+  @spec encode_page_params(map()) :: map()
+  defdelegate encode_page_params(state), to: PageCodec
+
+  @doc """
   Computes the analysis state from the marked positions (string index
   to fret) and the open-string pitches of the current tuning.
 
@@ -379,6 +423,17 @@ defmodule Fretboard.Music do
           | {:chords, [String.t()], String.t(), [map()]}
   def analyzer_state(marked_notes, string_pitches),
     do: Analyzer.analyzer_state(marked_notes, string_pitches)
+
+  @doc """
+  Computes the analysis state from absolute sounding pitches, independent
+  of instrument. Returns the same tuples as `analyzer_state/2`.
+  """
+  @spec analyze_pitches([integer()]) ::
+          {:empty}
+          | {:single, String.t()}
+          | {:interval, String.t(), String.t(), String.t()}
+          | {:chords, [String.t()], String.t(), [map()]}
+  defdelegate analyze_pitches(pitches), to: Analyzer
 
   @doc """
   Detects which named pitch preset matches a tuning, or "Custom".

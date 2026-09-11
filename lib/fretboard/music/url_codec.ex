@@ -44,8 +44,7 @@ defmodule Fretboard.Music.URLCodec do
   """
   def decode_pitch_params(params) do
     instrument = decode_instrument(params["instrument"])
-    chords = decode_chords(params["chords"])
-    highlight = find_highlighted_index(params["highlight"], chords)
+    {chords, highlight} = decode_chord_params(params)
 
     standard = %{
       pitches: Instrument.instrument_standard_pitches(instrument),
@@ -94,7 +93,7 @@ defmodule Fretboard.Music.URLCodec do
 
   @labels_to_quality Map.new(Chord.available_qualities(), &{Chord.label(&1), &1})
   @valid_notes MapSet.new(Note.chromatic_scale())
-  @instrument_to_string Map.new(Instrument.instruments(), fn {key, _label} ->
+  @instrument_to_string Map.new(Instrument.fretted_instruments(), fn {key, _label} ->
                           {key, Atom.to_string(key)}
                         end)
   @string_to_instrument Map.new(@instrument_to_string, fn {key, value} -> {value, key} end)
@@ -186,11 +185,25 @@ defmodule Fretboard.Music.URLCodec do
   """
   @spec encode_params(atom(), [String.t()], [map()], non_neg_integer() | nil) :: map()
   def encode_params(instrument, tuning, chords, highlighted_index) do
-    %{}
+    chords
+    |> encode_chord_params(highlighted_index)
     |> maybe_put_instrument(instrument)
-    |> maybe_put("chords", encode_chords(chords))
     |> maybe_put("tuning", encode_tuning(instrument, tuning))
+  end
+
+  @doc "Encodes shared chord and highlight parameters, omitting empty defaults."
+  @spec encode_chord_params([map()], non_neg_integer() | nil) :: map()
+  def encode_chord_params(chords, highlighted_index) do
+    %{}
+    |> maybe_put("chords", encode_chords(chords))
     |> add_highlight_param(chords, highlighted_index)
+  end
+
+  @doc "Decodes shared chords and the index of a valid highlighted chord."
+  @spec decode_chord_params(map()) :: {[map()], non_neg_integer() | nil}
+  def decode_chord_params(params) do
+    chords = decode_chords(params["chords"])
+    {chords, find_highlighted_index(params["highlight"], chords)}
   end
 
   defp add_highlight_param(params, _chords, nil), do: params
@@ -265,8 +278,7 @@ defmodule Fretboard.Music.URLCodec do
   def decode_params(params) do
     instrument = decode_instrument(params["instrument"])
     tuning = decode_tuning(params["tuning"], instrument)
-    chords = decode_chords(params["chords"])
-    highlighted_index = find_highlighted_index(params["highlight"], chords)
+    {chords, highlighted_index} = decode_chord_params(params)
     {instrument, tuning, chords, highlighted_index}
   end
 

@@ -10,6 +10,7 @@ defmodule Fretboard.Music.Instrument do
   @instruments %{
     guitar: %{
       name: "Guitar",
+      kind: :fretted,
       strings: 6,
       frets: 24,
       pitch_presets: [
@@ -26,6 +27,7 @@ defmodule Fretboard.Music.Instrument do
     },
     bass_4: %{
       name: "Bass (4-string)",
+      kind: :fretted,
       strings: 4,
       frets: 24,
       pitch_presets: [
@@ -36,6 +38,7 @@ defmodule Fretboard.Music.Instrument do
     },
     bass_5: %{
       name: "Bass (5-string)",
+      kind: :fretted,
       strings: 5,
       frets: 24,
       pitch_presets: [
@@ -46,6 +49,7 @@ defmodule Fretboard.Music.Instrument do
     },
     ukelele: %{
       name: "Ukulele",
+      kind: :fretted,
       strings: 4,
       frets: 24,
       pitch_presets: [
@@ -55,19 +59,33 @@ defmodule Fretboard.Music.Instrument do
         {"Baritone", [50, 55, 59, 64]},
         {"Half Step Down", [66, 59, 63, 68]}
       ]
+    },
+    piano: %{
+      name: "Piano",
+      kind: :keyboard,
+      pitch_range: 48..83,
+      pitch_presets: []
     }
   }
-  @instrument_keys [:guitar, :bass_4, :bass_5, :ukelele]
-  @type instrument_key :: :guitar | :bass_4 | :bass_5 | :ukelele
+  @fretted_keys [:guitar, :bass_4, :bass_5, :ukelele]
+  @instrument_keys @fretted_keys ++ [:piano]
+  @type fretted_key :: :guitar | :bass_4 | :bass_5 | :ukelele
+  @type instrument_key :: fretted_key() | :piano
   @type preset :: {String.t(), [String.t()]}
 
   @doc "Returns supported instrument keys and labels in display order."
   @spec instruments() :: [{instrument_key(), String.t()}]
   def instruments, do: Enum.map(@instrument_keys, &{&1, @instruments[&1].name})
 
+  @doc "Returns only fretted instrument keys and labels in display order."
+  @spec fretted_instruments() :: [{fretted_key(), String.t()}]
+  def fretted_instruments, do: Enum.map(@fretted_keys, &{&1, @instruments[&1].name})
+
   @doc "Returns instrument metadata, including derived legacy tuning fields, or nil."
   @spec instrument(atom()) :: map() | nil
-  def instrument(key) when key in @instrument_keys do
+  def instrument(:piano), do: @instruments.piano
+
+  def instrument(key) when key in @fretted_keys do
     Map.merge(@instruments[key], %{
       standard_pitches: instrument_standard_pitches(key),
       standard_tuning: instrument_standard_tuning(key),
@@ -78,16 +96,16 @@ defmodule Fretboard.Music.Instrument do
   def instrument(_key), do: nil
 
   @doc "Returns the instrument string count."
-  @spec instrument_strings(instrument_key()) :: pos_integer()
-  def instrument_strings(key) when key in @instrument_keys, do: @instruments[key].strings
+  @spec instrument_strings(fretted_key()) :: pos_integer()
+  def instrument_strings(key) when key in @fretted_keys, do: @instruments[key].strings
 
   @doc "Returns the standard note names in physical string order."
-  @spec instrument_standard_tuning(instrument_key()) :: [String.t()]
+  @spec instrument_standard_tuning(fretted_key()) :: [String.t()]
   def instrument_standard_tuning(key),
     do: Enum.map(instrument_standard_pitches(key), &Pitch.note_name/1)
 
   @doc "Returns the standard absolute open-string MIDI pitches."
-  @spec instrument_standard_pitches(instrument_key()) :: [integer()]
+  @spec instrument_standard_pitches(fretted_key()) :: [integer()]
   def instrument_standard_pitches(key), do: preset_pitches(key, "Standard")
 
   @doc "Returns all named MIDI pitch presets."
