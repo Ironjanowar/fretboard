@@ -37,8 +37,6 @@ defmodule FretboardWeb.PianoVisualizerTest do
   # G# and B occur only in E major when C major is also active.
   @emaj_unique_pitches [56, 59, 68, 71, 80, 83]
 
-  @pending_copy "Piano analyzer is coming in the next update"
-
   describe "instrument selector offers Piano" do
     test "mounting instrument=piano selects the Piano option", %{conn: conn} do
       {:ok, view, _html} = live(conn, @piano)
@@ -263,16 +261,16 @@ defmodule FretboardWeb.PianoVisualizerTest do
     end
   end
 
-  describe "analyzer tab pending state" do
-    test "piano analyzer tab shows an explicit English pending state instead of a fretboard", %{
+  describe "analyzer tab" do
+    test "piano analyzer replaces the temporary pending state", %{
       conn: conn
     } do
-      {:ok, view, html} = live(conn, "/?instrument=piano&tab=analyzer")
+      {:ok, view, _html} = live(conn, "/?instrument=piano&tab=analyzer")
 
-      assert html =~ @pending_copy
-      refute has_element?(view, "#piano-keyboard")
+      assert has_element?(view, "#piano-analyzer")
+      refute has_element?(view, "#piano-analyzer-pending")
       refute has_element?(view, ".fretboard-wrapper")
-      refute render(view) =~ "Click notes on the fretboard to identify a chord"
+      assert has_element?(view, ".analyzer-empty", "Click keys on the piano to identify a chord")
     end
 
     test "string instruments keep the full analyzer", %{conn: conn} do
@@ -280,7 +278,7 @@ defmodule FretboardWeb.PianoVisualizerTest do
 
       assert html =~ "Click notes on the fretboard to identify a chord"
       assert html =~ "analyzer-fretboard"
-      refute html =~ @pending_copy
+      refute html =~ "piano-analyzer"
     end
   end
 

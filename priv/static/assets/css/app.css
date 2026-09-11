@@ -793,6 +793,7 @@ body {
 .piano-key-marker {
   stroke: #111827;
   stroke-width: 1;
+  pointer-events: none;
 }
 
 .piano-note-label {
@@ -802,6 +803,25 @@ body {
   text-anchor: middle;
   pointer-events: none;
   user-select: none;
+}
+
+.piano-wrapper--interactive .piano-key {
+  cursor: pointer;
+  outline: none;
+}
+
+.piano-wrapper--interactive .piano-key-rect {
+  cursor: pointer;
+}
+
+.piano-wrapper--interactive .piano-key:focus .piano-key-rect {
+  stroke: #4FC3F7;
+  stroke-width: 3;
+}
+
+.piano-wrapper--interactive .piano-key--selected .piano-key-rect {
+  stroke: #4FC3F7;
+  stroke-width: 2;
 }
 
 /* ===== Desktop: min-width for fretboard and piano SVGs ===== */

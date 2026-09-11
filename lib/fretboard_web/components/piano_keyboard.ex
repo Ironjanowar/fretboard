@@ -72,6 +72,43 @@ defmodule FretboardWeb.PianoKeyboard do
     """
   end
 
+  attr :keys, :list, required: true
+  attr :selected_keys, :list, required: true
+
+  @doc """
+  Renders the fixed C3-B5 keyboard as accessible analyzer controls.
+  """
+  def piano_analyzer(assigns) do
+    assigns =
+      assigns
+      |> assign(:white_keys, Enum.reject(assigns.keys, &black?(&1.pitch)))
+      |> assign(:black_keys, Enum.filter(assigns.keys, &black?(&1.pitch)))
+      |> assign(:selected, MapSet.new(assigns.selected_keys))
+      |> assign(:view_box, "0 0 #{@svg_width} #{@white_key_height}")
+
+    ~H"""
+    <div
+      class="piano-wrapper piano-wrapper--interactive"
+      id="piano-analyzer"
+      role="group"
+      aria-label="Piano analyzer keyboard from C3 to B5"
+    >
+      <svg viewBox={@view_box} class="piano-svg" style="min-width: 900px;">
+        <.analyzer_key
+          :for={key_data <- @white_keys}
+          key_data={key_data}
+          selected={MapSet.member?(@selected, key_data.pitch)}
+        />
+        <.analyzer_key
+          :for={key_data <- @black_keys}
+          key_data={key_data}
+          selected={MapSet.member?(@selected, key_data.pitch)}
+        />
+      </svg>
+    </div>
+    """
+  end
+
   attr :key_data, :map, required: true
   attr :active_chords, :list, required: true
   attr :chord_colors, :list, required: true
@@ -99,6 +136,58 @@ defmodule FretboardWeb.PianoKeyboard do
         chord_colors={@chord_colors}
         highlighted_chord={@highlighted_chord}
       />
+    </g>
+    """
+  end
+
+  attr :key_data, :map, required: true
+  attr :selected, :boolean, required: true
+
+  defp analyzer_key(assigns) do
+    pitch = assigns.key_data.pitch
+    selected_class = if assigns.selected, do: " piano-key--selected", else: ""
+
+    assigns =
+      assigns
+      |> assign(:key_class, "piano-key piano-key--#{key_color(pitch)}#{selected_class}")
+      |> assign(:x, key_x(pitch))
+      |> assign(:width, key_width(pitch))
+      |> assign(:height, key_height(pitch))
+      |> assign(:cx, key_x(pitch) + div(key_width(pitch), 2))
+      |> assign(:cy, marker_cy(pitch))
+      |> assign(:key_name, key_name(assigns.key_data))
+
+    ~H"""
+    <g
+      id={"piano-analyzer-key-#{@key_data.pitch}"}
+      class={@key_class}
+      data-pitch={@key_data.pitch}
+      role="button"
+      tabindex="0"
+      aria-label={@key_name}
+      aria-pressed={to_string(@selected)}
+      phx-hook="PianoKey"
+      phx-click="toggle_piano_key"
+      phx-keydown="toggle_piano_key"
+      phx-value-pitch={@key_data.pitch}
+    >
+      <rect class="piano-key-rect" x={@x} y="0" width={@width} height={@height} rx="2" />
+      <circle
+        :if={@selected}
+        class="piano-key-marker"
+        cx={@cx}
+        cy={@cy}
+        r="10"
+        fill="#4FC3F7"
+      />
+      <text
+        :if={@selected}
+        class="piano-note-label"
+        x={@cx}
+        y={@cy + 4}
+      >
+        {@key_data.note}
+      </text>
     </g>
     """
   end

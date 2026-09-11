@@ -11,9 +11,9 @@ Built for guitarists who want to **understand** the fretboard, not just memorize
 - **Identify chords from the fretboard** — click notes in the Analyzer tab and get matching chords with intervals, inversions, and bass note (slash chords); incomplete voicings are matched too
 - **Find compatible keys** — with several chords selected, the app suggests keys that fit them, with a preview of their diatonic chords
 - **Explore chord progressions** — load a progression (pop, jazz, blues, flamenco, modal…) in any tonic
-- **Switch instruments and tunings** — guitar, 4- and 5-string bass, and ukulele, each with named tuning presets (Standard, Drop D, DADGAD, Open G, Low G…) or per-string custom tunings
+- **Switch instruments** — guitar, 4- and 5-string bass, ukulele, and a three-octave piano; string instruments include named presets (Standard, Drop D, DADGAD, Open G, Low G…) and per-string custom tunings
 - **44 chord types** — from triads to 13ths, including suspended and altered chords
-- **Share what you see** — every state (chords, marked notes, instrument, tuning) lives in the URL: bookmark it or send it to a friend
+- **Share what you see** — every state (chords, marked notes or piano keys, instrument, tuning) lives in the URL: bookmark it or send it to a friend
 
 ## 📸 Screenshots
 

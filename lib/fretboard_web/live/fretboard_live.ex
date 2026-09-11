@@ -6,13 +6,13 @@ defmodule FretboardWeb.FretboardLive do
   or a fixed piano keyboard for the piano instrument, with a configurable
   tuning for strings and chord-note coloring shared by both. Supports
   adding/removing chords and highlighting, plus an interactive note
-  analyzer tab for fretted instruments.
+  analyzer tab for fretted instruments and piano.
   """
 
   use FretboardWeb, :live_view
 
   import FretboardWeb.FretboardSVG, only: [fretboard_svg: 1, analyzer_fretboard_svg: 1]
-  import FretboardWeb.PianoKeyboard, only: [piano_keyboard: 1]
+  import FretboardWeb.PianoKeyboard, only: [piano_analyzer: 1, piano_keyboard: 1]
   import FretboardWeb.Modals
   import Phoenix.LiveView.JS, only: [toggle: 1]
 
@@ -76,8 +76,6 @@ defmodule FretboardWeb.FretboardLive do
     end
   end
 
-  # Piano state: a fixed keyboard with no tuning, no fretboard data, and no
-  # analysis until the phase-3 analyzer interaction lands.
   defp piano_state(page, _previous) do
     %{
       instrument: :piano,
@@ -93,9 +91,14 @@ defmodule FretboardWeb.FretboardLive do
       tab: page.tab,
       marked_notes: %{},
       selected_keys: page.selection,
-      analysis: nil
+      analysis: piano_analysis(page)
     }
   end
+
+  defp piano_analysis(%{tab: :analyzer, selection: pitches}),
+    do: Music.analyze_pitches(pitches)
+
+  defp piano_analysis(_page), do: nil
 
   # Fretted state: derived exactly as before, from the page contract.
   defp fretted_state(page, instrument, previous) do
@@ -403,7 +406,9 @@ defmodule FretboardWeb.FretboardLive do
       selection = switch_selection(socket.assigns, new_instrument)
 
       {:noreply,
-       push_page_patch(socket,
+       socket
+       |> assign(show_tuning_modal: false)
+       |> push_page_patch(
          instrument: new_instrument,
          tuning_state: standard_tuning(new_instrument),
          selection: selection,
@@ -437,7 +442,12 @@ defmodule FretboardWeb.FretboardLive do
   end
 
   @impl true
-  def handle_event("toggle_note", %{"string" => string_str, "fret" => fret_str}, socket) do
+  def handle_event(
+        "toggle_note",
+        %{"string" => string_str, "fret" => fret_str},
+        %{assigns: %{instrument: instrument}} = socket
+      )
+      when instrument != :piano do
     string = String.to_integer(string_str)
     fret = String.to_integer(fret_str)
 
@@ -455,10 +465,33 @@ defmodule FretboardWeb.FretboardLive do
     {:noreply, push_page_patch(socket, selection: new_marked)}
   end
 
+  def handle_event("toggle_note", _params, socket), do: {:noreply, socket}
+
   @impl true
-  def handle_event("clear_notes", _params, socket) do
-    {:noreply, push_page_patch(socket, selection: %{})}
+  def handle_event(
+        "toggle_piano_key",
+        %{"pitch" => pitch} = params,
+        %{assigns: %{instrument: :piano, tab: :analyzer}} = socket
+      )
+      when is_binary(pitch) do
+    with true <- valid_activation?(params),
+         {pitch, ""} <- Integer.parse(pitch),
+         true <- pitch in piano_range() do
+      selection = toggle_pitch(socket.assigns.selected_keys, pitch)
+      {:noreply, push_page_patch(socket, selection: selection)}
+    else
+      _invalid -> {:noreply, socket}
+    end
   end
+
+  def handle_event("toggle_piano_key", _params, socket), do: {:noreply, socket}
+
+  @impl true
+  def handle_event("clear_notes", _params, %{assigns: %{instrument: :piano}} = socket),
+    do: {:noreply, push_page_patch(socket, selection: [])}
+
+  def handle_event("clear_notes", _params, socket),
+    do: {:noreply, push_page_patch(socket, selection: %{})}
 
   @impl true
   def handle_event("clear_all_chords", _params, socket) do
@@ -478,6 +511,13 @@ defmodule FretboardWeb.FretboardLive do
 
   defp standard_tuning(:piano), do: nil
   defp standard_tuning(instrument), do: Music.preset_tuning(instrument, "Standard")
+
+  defp valid_activation?(%{"key" => key}), do: key in ["Enter", " "]
+  defp valid_activation?(params), do: not Map.has_key?(params, "key")
+
+  defp toggle_pitch(pitches, pitch) do
+    if pitch in pitches, do: List.delete(pitches, pitch), else: [pitch | pitches]
+  end
 
   @impl true
   def render(assigns) do
@@ -1056,15 +1096,35 @@ defmodule FretboardWeb.FretboardLive do
   attr :svg, :map, required: true
   attr :tuning, :list, required: true
   attr :marked_notes, :map, required: true
+  attr :selected_keys, :list, required: true
+  attr :keyboard_keys, :list, required: true
+  attr :active_chords, :list, required: true
+  attr :active_chord_colors, :list, required: true
+  attr :highlighted_chord, :any, default: nil
   attr :analysis, :any, default: nil
 
   defp analyzer_tab(assigns) do
     ~H"""
-    <div :if={@instrument == :piano} class="analyzer-empty" id="piano-analyzer-pending">
-      Piano analyzer is coming in the next update
-    </div>
+    <%= if @instrument == :piano do %>
+      <.piano_analyzer keys={@keyboard_keys} selected_keys={@selected_keys} />
 
-    <%= if @instrument != :piano do %>
+      <div :if={@selected_keys != []} class="analyzer-results">
+        <button type="button" class="btn-clear" phx-click="clear_notes">
+          ✕ Clear notes
+        </button>
+      </div>
+
+      <.analyzer_results
+        analysis={@analysis}
+        empty_instruction="Click keys on the piano to identify a chord"
+      />
+
+      <.chord_chips
+        active_chords={@active_chords}
+        chord_colors={@active_chord_colors}
+        highlighted_chord={@highlighted_chord}
+      />
+    <% else %>
       <%!-- Analyzer tab: interactive fretboard + analysis results --%>
       <.analyzer_fretboard_svg
         svg={@svg}
@@ -1141,21 +1201,23 @@ defmodule FretboardWeb.FretboardLive do
   # ---------------------------------------------------------------------------
 
   attr :analysis, :any, default: nil
+  attr :empty_instruction, :string, default: "Click notes on the fretboard to identify a chord"
 
   defp analyzer_results(assigns) do
     ~H"""
     <div class="analyzer-results" id={"analyzer-results-#{analysis_key(@analysis)}"}>
-      <.analysis_state analysis={@analysis} />
+      <.analysis_state analysis={@analysis} empty_instruction={@empty_instruction} />
     </div>
     """
   end
 
   attr :analysis, :any, required: true
+  attr :empty_instruction, :string, required: true
 
   defp analysis_state(%{analysis: a} = assigns) when a in [nil, {:empty}] do
     ~H"""
     <div class="analyzer-empty">
-      Click notes on the fretboard to identify a chord
+      {@empty_instruction}
     </div>
     """
   end
