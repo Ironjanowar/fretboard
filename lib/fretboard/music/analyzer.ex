@@ -1,10 +1,12 @@
 defmodule Fretboard.Music.Analyzer do
   @moduledoc """
-  Interval and chord analysis of marked fretboard positions.
+  Interval and chord analysis of absolute sounding pitches.
 
-  The analyzer reasons about real sounding pitches — each marked note
-  is its string's open pitch plus the fret — instead of trusting
-  string order. Two consequences:
+  `analyze_pitches/1` is instrument-independent: any selection that can
+  be expressed as absolute pitches (piano keys, synthesizer notes)
+  analyzes the same way. `analyzer_state/2` adapts marked fretboard
+  positions — each marked note is its string's open pitch plus the
+  fret — instead of trusting string order. Two consequences:
 
     * the bass of a shape is its lowest sounding pitch, so reentrant
       tunings (standard high-G ukulele) and real pitch crossings work;
