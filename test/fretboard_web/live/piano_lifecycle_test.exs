@@ -6,6 +6,36 @@ defmodule FretboardWeb.PianoLifecycleTest do
   @piano_analyzer "/?instrument=piano&tab=analyzer"
 
   describe "URL-backed piano lifecycle" do
+    test "analyzer hides visualizer chord chips without losing chords or highlight", %{conn: conn} do
+      {:ok, view, _html} =
+        live(conn, "/?instrument=piano&chords=Cmaj,Emaj&highlight=Cmaj")
+
+      assert has_element?(view, ".chord-chip--highlighted", "Cmaj")
+      assert has_element?(view, ".chord-chip", "Emaj")
+
+      view |> element("[phx-click=toggle_tab][phx-value-tab=analyzer]") |> render_click()
+
+      assert patch_query(view) == %{
+               "instrument" => "piano",
+               "tab" => "analyzer",
+               "chords" => "Cmaj,Emaj",
+               "highlight" => "Cmaj"
+             }
+
+      refute has_element?(view, ".chord-chip")
+
+      view |> element("[phx-click=toggle_tab][phx-value-tab=visualizer]") |> render_click()
+
+      assert patch_query(view) == %{
+               "instrument" => "piano",
+               "chords" => "Cmaj,Emaj",
+               "highlight" => "Cmaj"
+             }
+
+      assert has_element?(view, ".chord-chip--highlighted", "Cmaj")
+      assert has_element?(view, ".chord-chip", "Emaj")
+    end
+
     test "switching analyzer to visualizer and back retains exact selected pitches", %{conn: conn} do
       {:ok, view, _html} = live(conn, @piano_analyzer <> "&keys=49,60,72")
 
@@ -32,7 +62,7 @@ defmodule FretboardWeb.PianoLifecycleTest do
       assert has_element?(view, "#instrument-select option[value=piano][selected]")
       assert has_element?(view, "[phx-value-tab=analyzer].tab-toggle-btn--active")
       assert has_element?(view, ".analysis-card-title", "Cmaj")
-      assert has_element?(view, ".chord-chip--highlighted", "Amin")
+      refute has_element?(view, ".chord-chip")
 
       view |> element("#piano-analyzer [data-pitch='72']") |> render_click()
       canonical_path = assert_patch(view)
@@ -48,7 +78,7 @@ defmodule FretboardWeb.PianoLifecycleTest do
       {:ok, restored, _html} = live(build_conn(), canonical_path)
       assert has_element?(restored, "#piano-analyzer [data-pitch='72'][aria-pressed='true']")
       assert has_element?(restored, ".analysis-card-title", "Cmaj")
-      assert has_element?(restored, ".chord-chip--highlighted", "Amin")
+      refute has_element?(restored, ".chord-chip")
     end
 
     test "URL navigation recomputes selection and analysis without stale assigns", %{conn: conn} do

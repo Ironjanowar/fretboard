@@ -1098,9 +1098,6 @@ defmodule FretboardWeb.FretboardLive do
   attr :marked_notes, :map, required: true
   attr :selected_keys, :list, required: true
   attr :keyboard_keys, :list, required: true
-  attr :active_chords, :list, required: true
-  attr :active_chord_colors, :list, required: true
-  attr :highlighted_chord, :any, default: nil
   attr :analysis, :any, default: nil
 
   defp analyzer_tab(assigns) do
@@ -1117,12 +1114,6 @@ defmodule FretboardWeb.FretboardLive do
       <.analyzer_results
         analysis={@analysis}
         empty_instruction="Click keys on the piano to identify a chord"
-      />
-
-      <.chord_chips
-        active_chords={@active_chords}
-        chord_colors={@active_chord_colors}
-        highlighted_chord={@highlighted_chord}
       />
     <% else %>
       <%!-- Analyzer tab: interactive fretboard + analysis results --%>
