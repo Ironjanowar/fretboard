@@ -4,11 +4,12 @@ defmodule Fretboard.Music.InstrumentTest do
   alias Fretboard.Music.Instrument
 
   describe "instruments/0" do
-    test "returns a list of 4 instrument tuples" do
+    test "returns a list of 5 instrument tuples including piano" do
       instruments = Instrument.instruments()
 
       assert is_list(instruments)
-      assert length(instruments) == 4
+      assert length(instruments) == 5
+      assert {:piano, "Piano"} in instruments
     end
 
     test "includes guitar tuple" do

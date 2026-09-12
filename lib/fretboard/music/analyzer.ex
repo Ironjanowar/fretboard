@@ -1,10 +1,12 @@
 defmodule Fretboard.Music.Analyzer do
   @moduledoc """
-  Interval and chord analysis of marked fretboard positions.
+  Interval and chord analysis of absolute sounding pitches.
 
-  The analyzer reasons about real sounding pitches — each marked note
-  is its string's open pitch plus the fret — instead of trusting
-  string order. Two consequences:
+  `analyze_pitches/1` is instrument-independent: any selection that can
+  be expressed as absolute pitches (piano keys, synthesizer notes)
+  analyzes the same way. `analyzer_state/2` adapts marked fretboard
+  positions — each marked note is its string's open pitch plus the
+  fret — instead of trusting string order. Two consequences:
 
     * the bass of a shape is its lowest sounding pitch, so reentrant
       tunings (standard high-G ukulele) and real pitch crossings work;
@@ -35,10 +37,24 @@ defmodule Fretboard.Music.Analyzer do
           | {:interval, String.t(), String.t(), String.t()}
           | {:chords, [String.t()], String.t(), [map()]}
   def analyzer_state(marked_notes, string_pitches) do
-    pitches =
-      marked_notes
-      |> Enum.map(fn {string, fret} -> Enum.at(string_pitches, string) + fret end)
-      |> Enum.sort()
+    marked_notes
+    |> Enum.map(fn {string, fret} -> Enum.at(string_pitches, string) + fret end)
+    |> analyze_pitches()
+  end
+
+  @doc """
+  Computes the analysis state from absolute sounding pitches.
+
+  Input order and repeated pitches do not affect the result. Returns the
+  same analysis tuples as `analyzer_state/2`, with the lowest pitch as bass.
+  """
+  @spec analyze_pitches([integer()]) ::
+          {:empty}
+          | {:single, String.t()}
+          | {:interval, String.t(), String.t(), String.t()}
+          | {:chords, [String.t()], String.t(), [map()]}
+  def analyze_pitches(pitches) do
+    pitches = Enum.sort(pitches)
 
     # Sorting before deduplication retains the lowest height of each class.
     classes = Enum.uniq_by(pitches, &Pitch.note_name/1)

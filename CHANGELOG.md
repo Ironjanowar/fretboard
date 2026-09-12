@@ -3,6 +3,20 @@
 All notable changes to this project are documented here. Entries are dated
 with the date and time they were added — no version numbers.
 
+## 2026-09-11 16:53 UTC
+
+### Added
+- Piano support with a fixed three-octave C3–B5 keyboard. The visualizer marks
+  every visible occurrence of the selected chord notes using the existing
+  color system.
+- Piano analyzer with independently selectable keys, chord and interval
+  identification, inversions, keyboard accessibility, and shareable URL state.
+
+### Changed
+- Instrument controls hide string tuning options when Piano is selected.
+- Switching between piano and a string instrument clears analyzer selections
+  that cannot be translated between keys and fretboard positions.
+
 ## 2026-09-09 10:47 UTC
 
 ### Added

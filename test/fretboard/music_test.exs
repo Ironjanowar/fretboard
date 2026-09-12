@@ -154,9 +154,10 @@ defmodule Fretboard.MusicTest do
   end
 
   describe "instruments/0" do
-    test "returns 4 instrument tuples" do
+    test "returns 5 instrument tuples including piano" do
       instruments = Music.instruments()
-      assert length(instruments) == 4
+      assert length(instruments) == 5
+      assert {:piano, "Piano"} in instruments
     end
 
     test "includes guitar tuple" do
