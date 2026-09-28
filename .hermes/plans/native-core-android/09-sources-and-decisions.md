@@ -42,7 +42,18 @@ Access date: 2026-09-28. URLs can change; capture version-specific references wh
 - Future Elixir adapter, NOT current work: <https://github.com/rusterlium/rustler>.
 - DeepSeek current model/pricing: <https://api-docs.deepseek.com/quick_start/pricing/>. Prefer current pricing page over older launch announcements if they disagree about retirement/routing.
 
-## Decision gates discovered by source inspection
+## ID namespaces (avoid confusion)
+
+| Prefix | Owner | Meaning |
+|---|---|---|
+| `Contract.D01`–`Contract.D10` | `02-core-contract.md`, referenced by `04-core-phases.md` | Contract-local discrepancy labels discovered while porting; all are approval gates |
+| `Delivery.D00`–`Delivery.D05` | `06-delivery.md` | Toolchain/artifact/signing/CI work packages |
+| `DEC-xx` | this document | Plan-level decision register below; canonical cross-project list |
+| `C00`–`C22` | `04-core-phases.md` | Core implementation tasks |
+| `A00`–`A25` | `05-android-phases.md` | Android implementation tasks |
+
+`Contract.Dxx` and `DEC-xx` overlap in subject but are numbered independently; always write the prefix. Where a `Contract.Dxx` gate is resolved, record the outcome as a `DEC-xx` entry so the cross-project register stays the single approval history.
+
 
 The user approved architecture/product scope, NOT the resolutions below. Keep these explicit in P0/affected phase review. Recommendations are not authorization to alter the web or oracle.
 
