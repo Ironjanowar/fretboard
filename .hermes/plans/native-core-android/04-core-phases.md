@@ -1,4 +1,4 @@
-# 04 — Core implementation phases and exact file ownership
+# Core Implementation Phases and File Ownership
 
 **Planning only.** Every future file below belongs to **`Ironjanowar/fretboard-core`**, expected checkout `/workspace/repos/fretboard-core` after verifying its remote. None belongs in the web application. No commands below are claimed to have run. Expected outcomes are future acceptance assertions, not fabricated execution output. Read `02-core-contract.md`, `06-delivery.md`, and `07-validation.md` first.
 

@@ -1,4 +1,4 @@
-# 02 — Core baseline, state and wire contract
+# Core Baseline, State, and Wire Contract
 
 Status: implementation plan, not implementation approval. The source oracle is **Ironjanowar/fretboard at `2daa8c665efa268942dda352691f39d78db42512`**. This document describes observed source behavior separately from the proposed Rust interface. No Rust, Android, website deployment, Rustler, WASM or iOS implementation is authorized by creating this plan.
 
@@ -360,7 +360,7 @@ Restoration precedence: a valid explicit incoming import/intent wins over saved 
 
 D01 zipped intervals/missing styling; D02 partial predicate versus docs; D03 formula-map tie order; D04 inversion mapping; D05 unusual triad-base scoring and flat-root asymmetry; D06 modal grouping/order/dropped partial groups; D07 progression prose/data inconsistencies; D08 exact query-byte canonicalization; D09 transport behavior and import limits/origin policy; D10 safer typed rejection of malformed actions. All are review gates. Capture current baseline first. A user-approved deviation is recorded with input, old result, proposed result, reason, affected phase and regression fixture. A discrepancy is never resolved by regenerating golden expectations from the Rust port. Other discoveries join this ledger, not hidden “cleanup”.
 
-Discrepancy labels in this document are scoped as `Contract.D01` through `Contract.D10`; they are unrelated to delivery work-package IDs in `06-delivery.md`. Per07, canonical query ordering need not match the original encoded byte order; preserve decoded semantics and percent escaping. The proposed sorted native query order under D08 is therefore compatible unless a newly discovered consumer proves an additional byte-order requirement.
+Discrepancy labels in this document are scoped as `Contract.D01` through `Contract.D10`; they are unrelated to delivery work-package IDs in `06-delivery.md`. Per `07-validation.md`, canonical query ordering need not match the original encoded byte order; preserve decoded semantics and percent escaping. The proposed sorted native query order under D08 is therefore compatible unless a newly discovered consumer proves an additional byte-order requirement.
 
 ## 11. Existing public facade inventory (migration coverage, not FFI names)
 
