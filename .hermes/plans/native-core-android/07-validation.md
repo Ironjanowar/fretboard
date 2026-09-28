@@ -4,7 +4,7 @@
 
 This document specifies tests to implement and run. Checkboxes are intentionally empty. Source-reading findings are not test execution; host Rust tests are not Android native-loading tests; emulator success is not OnePlus approval. Each gate ledger must distinguish those layers.
 
-Create `docs/validation/phase-P<N>.md` in `fretboard-android` for each phase. Record core/app commits, artifact checksums, toolchain, device/API/ABI, commands and exit codes, reports/screenshots, known failures, user approval reference, and next-phase authorization. Never store passwords, device serials or private keystores in evidence.
+Create/update `docs/phase-gates.md` in `fretboard-android` as the single phase-gate record (name fixed by the Android phase document; do not create a second `docs/validation/` tree). Record core/app commits, artifact checksums, toolchain, device/API/ABI, commands and exit codes, reports/screenshots, known failures, user approval reference, and next-phase authorization. Never store passwords, device serials or private keystores in evidence.
 
 ## Per-phase gates
 

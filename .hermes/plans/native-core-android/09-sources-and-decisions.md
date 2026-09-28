@@ -67,8 +67,9 @@ A dependent feature may not be declared complete with its blocking decision unre
 - `AGENTS.md`: English-only, pure-domain boundaries, TDD roles, small functions/modules, generated-code prohibition, exact verified commands and PR approval rules.
 - `docs/implementation-ledger.md`: completed tasks, version pairing, pending gates.
 - Core `docs/decisions.md`: decision ID, baseline observation, approved result, approver reference, test/fixture path, compatibility consequence.
-- Android `docs/validation/phase-P<N>.md`: actual automated/manual evidence, not copied expected outputs.
-- Toolchain ledgers specified in delivery document.
+- Android `docs/phase-gates.md`: actual automated/manual evidence, not copied expected outputs.
+- Android phase evidence detail (`docs/release-checklist.md`) is referenced by the Android phase document; the gate record above stays the single source of approval history.
+- `docs/toolchain.md` / toolchain ledgers specified in the delivery document; core `docs/decisions.md` is the canonical decision register and `02-core-contract.md`'s gate list feeds into it.
 
 ## Planning evidence and limitations
 

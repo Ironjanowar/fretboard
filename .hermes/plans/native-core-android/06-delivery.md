@@ -50,11 +50,11 @@ Expected result: nonzero on any error; real AAR with both ABI libraries and gene
 
 ### D02 — verified Android consumption
 
-**Files, Android:** `engine/core-artifact.lock.json`, `scripts/fetch-core.py`, `scripts/tests/test_fetch_core.py`, `engine/build.gradle.kts`, `.gitignore`, `docs/core-updates.md`.
+**Files, Android:** `core-release.lock.json`, `scripts/prepare_core.py`, `scripts/tests/test_prepare_core.py`, `engine/build.gradle.kts`, `.gitignore`, `docs/core-updates.md`.
 
-Proposed lock contract (schema, not fabricated values): `version`, `sourceCommit`, `assetUrl`, `sha256`, `uniffiVersion`, `runtimeDependencies`, `minSdk`, `abis`, `schemaVersion`. Resolve real values from the core release before committing. An unfilled lock must fail closed.
+Names and paths here are the authoritative Android-side names; the Android phase document uses the same. Local verified artifact path: ignored `vendor/fretboard-mobile.aar`.
 
-1. Test bad checksum, missing asset, version mismatch, interrupted download, and path traversal/unsafe destination. Download to temporary path, verify bytes, atomically promote into ignored `vendor/`.
+1. Test bad checksum, missing asset, version mismatch, interrupted download, and path traversal/unsafe destination (`test_prepare_core.py`). Download to temporary path, verify bytes, atomically promote into ignored `vendor/`. Same verified cache supports `--offline`.
 2. Implement explicit preparation command; Gradle fails with an actionable missing-artifact message rather than silently fetching a floating engine.
 3. Public release assets can be fetched without a token. If private, use an existing scoped GitHub credential/CI secret via supported API; never embed credentials in the lock or URL. Repository visibility is discovered in P0.
 4. Configure Gradle `engine` module to expose generated types only through its own adapter. Ordinary app JVM tests fake the engine port; Android instrumentation tests call actual native libraries.
@@ -63,14 +63,15 @@ Proposed lock contract (schema, not fabricated values): `version`, `sourceCommit
 
 ```sh
 python3 -m unittest discover -s scripts/tests
-python3 scripts/fetch-core.py --lock engine/core-artifact.lock.json
+python3 scripts/prepare_core.py
+python3 scripts/prepare_core.py --offline
 ./gradlew --no-daemon :engine:testDebugUnitTest :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
 ./gradlew --no-daemon :app:connectedDebugAndroidTest
 ```
 
 ## D03 — persistent signing from the first shared APK
 
-**Files, Android:** `app/build.gradle.kts`, `.gitignore`, `docs/signing.md`, `scripts/verify-apk.sh`, `scripts/release-evidence.py`, `.github/workflows/release.yml`.
+**Files, Android:** `app/build.gradle.kts`, `.gitignore`, `docs/release-signing.md`, `scripts/verify_apk.py`, `.github/workflows/release.yml`. Phase-gate/evidence reporting uses `docs/phase-gates.md` and the verifier commands named in the Android phase document; do not invent a second script name.
 
 - Proposed stable application ID: `dev.ironjanowar.fretboard`; confirm before P1 signing and never change to fix an update problem.
 - Use a dedicated persistent experiment release key, not a newly generated ephemeral CI debug key. Generate/store it through an approved secure local workflow. Never put private key material/passwords in chat, plan, git, build log or release artifact.
